@@ -22,10 +22,13 @@
      acima do monograma do que abaixo; a janela recortada (aspect-ratio menor +
      object-position deslocado p/ baixo) equilibra as margens sem editar o asset. */
   .hero { line-height: 0; overflow: hidden; background: var(--marinho); }
-  .hero img { width: 100%; display: block; aspect-ratio: 1697 / 176;
-              object-fit: cover; object-position: center 74%; }
+  /* O logo vai de y≈140 a 248 (272 no total): ~139px de navy acima, ~20px abaixo.
+     Fixamos a BASE (object-position bottom) — nunca corta o texto nem a régua
+     dourada de baixo — e a aspect-ratio menor apara só o excesso de navy do topo. */
+  .hero img { width: 100%; display: block; aspect-ratio: 1697 / 155;
+              object-fit: cover; object-position: center bottom; }
   @media (max-width: 620px) {
-    .hero img { aspect-ratio: 1697 / 200; object-position: center 72%; }
+    .hero img { aspect-ratio: 1697 / 178; }
   }
   .filete { height: 3px; background: linear-gradient(90deg, transparent, var(--dourado) 18%, var(--dourado) 82%, transparent); }
 
