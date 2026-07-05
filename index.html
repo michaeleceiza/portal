@@ -18,9 +18,15 @@
   body { font: 17px/1.6 var(--sans); background: var(--papel); color: var(--tinta); }
 
   /* ===== Hero — papelaria do escritório ===== */
-  /* Banner ponta a ponta, como no timbrado do Word — sem faixa de tom diferente. */
-  .hero { line-height: 0; }
-  .hero img { width: 100%; display: block; height: auto; }
+  /* Banner ponta a ponta, como no timbrado do Word. O PNG tem muito mais navy
+     acima do monograma do que abaixo; a janela recortada (aspect-ratio menor +
+     object-position deslocado p/ baixo) equilibra as margens sem editar o asset. */
+  .hero { line-height: 0; overflow: hidden; background: var(--marinho); }
+  .hero img { width: 100%; display: block; aspect-ratio: 1697 / 176;
+              object-fit: cover; object-position: center 74%; }
+  @media (max-width: 620px) {
+    .hero img { aspect-ratio: 1697 / 200; object-position: center 72%; }
+  }
   .filete { height: 3px; background: linear-gradient(90deg, transparent, var(--dourado) 18%, var(--dourado) 82%, transparent); }
 
   .wrap { max-width: 760px; margin: 0 auto; padding: 20px 18px 0; }
@@ -78,6 +84,16 @@
   .chip { display: inline-block; margin-top: 12px; padding: 5px 14px; border-radius: 999px;
           background: var(--dourado-suave); color: #7A5C25; border: 1px solid #E2CFA8;
           font-size: .82rem; font-weight: 600; letter-spacing: .03em; }
+
+  /* Capa do processo (resumo) — grade de campos rotulados, estilo ficha */
+  .resumo { padding: 16px 22px; background: #FCFBF8; border-bottom: 1px solid var(--linha);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px 22px; }
+  .resumo .full { grid-column: 1 / -1; }
+  .campo .rot { font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+                color: var(--dourado); font-weight: 700; margin-bottom: 3px; }
+  .campo .val { font-size: .98rem; line-height: 1.4; color: var(--ink); }
+  .campo .val.forte { font-family: var(--serif); font-size: 1.05rem; color: var(--marinho); }
+  @media (max-width: 620px) { .resumo { grid-template-columns: 1fr; gap: 12px; } }
 
   .secao { padding: 18px 22px 6px; }
   .secao + .secao { border-top: 1px dashed var(--linha); }
@@ -384,6 +400,44 @@
     return n;
   }
 
+  // Capa do processo: assunto (destaque, largura total), parte contrária, área,
+  // classe, valor da causa e desde quando (data + "há X anos"). Só campos
+  // presentes viram cartão; se nada veio, a seção não aparece.
+  function blocoResumo(r) {
+    if (!r) return null;
+    var campos = [];
+    if (r.assunto)      campos.push({ rot: "Assunto", val: r.assunto, full: true, destaque: true });
+    if (r.parteAdversa) campos.push({ rot: "Parte contrária", val: r.parteAdversa, full: true });
+    if (r.area)         campos.push({ rot: "Área", val: r.area });
+    if (r.classe)       campos.push({ rot: "Tipo de ação", val: r.classe });
+    if (r.valor)        campos.push({ rot: "Valor da causa", val: r.valor });
+    if (r.distribuicao) {
+      var anos = anosDesde(r.distribuicao);
+      campos.push({ rot: "Em curso desde", val: dataExtenso(r.distribuicao) + (anos ? " (" + anos + ")" : "") });
+    }
+    if (!campos.length) return null;
+    var box = el("div", "resumo");
+    campos.forEach(function (c) {
+      var wrap = el("div", "campo" + (c.full ? " full" : ""));
+      wrap.appendChild(el("div", "rot", c.rot));
+      wrap.appendChild(el("div", "val" + (c.destaque ? " forte" : ""), c.val));
+      box.appendChild(wrap);
+    });
+    return box;
+  }
+
+  // "há 2 anos" / "há 8 meses" a partir de uma data ISO de distribuição.
+  function anosDesde(iso) {
+    var m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    var meses = (new Date() - d) / (30.44 * 86400000);
+    if (meses < 1) return null;
+    if (meses < 12) return "há " + Math.round(meses) + " meses";
+    var n = Math.floor(meses / 12);
+    return "há " + n + (n === 1 ? " ano" : " anos");
+  }
+
   function secaoLista(titulo, itens, opcoes) {
     opcoes = opcoes || {};
     if (!itens || !itens.length) return null;
@@ -471,6 +525,9 @@
     if (p.orgao) topo.appendChild(el("div", "orgao", p.orgao));
     if (p.situacao) topo.appendChild(el("span", "chip", situacaoAmigavel(p.situacao)));
     card.appendChild(topo);
+
+    var resumo = blocoResumo(p.resumo);
+    if (resumo) card.appendChild(resumo);
 
     // Ordem pela utilidade para o cliente: o que exige atenção primeiro.
     [ secaoLista("Audiências marcadas", p.audiencias,
