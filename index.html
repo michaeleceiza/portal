@@ -105,6 +105,30 @@
              color: var(--marinho); font-size: .84rem; font-weight: 600;
              text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
              -webkit-tap-highlight-color: transparent; }
+  /* "Em palavras simples" — tradução leiga do evento */
+  .significa { display: block; margin-top: 4px; font-size: .84rem; line-height: 1.5;
+               color: #6E6633; }
+  .significa::before { content: "Em palavras simples: "; font-weight: 600; }
+  /* Nota de tranquilidade sob a saudação */
+  .cuidando { margin: 14px 0 4px; padding: 12px 14px; border-radius: 10px;
+              background: #EFF3EC; border: 1px solid #D8E2D3; color: #3E5138;
+              font-size: .92rem; line-height: 1.55; }
+  /* Destaque de audiências no topo do painel */
+  .destaque { margin: 16px 0 0; padding: 16px; border-radius: 12px;
+              background: var(--marinho); color: #F4EFE4; }
+  .destaqueTitulo { font-family: var(--serif); font-size: 1.08rem; color: #E8CE93;
+                    margin-bottom: 8px; }
+  .destaqueItem { font-size: .95rem; line-height: 1.5; padding: 2px 0; }
+  .destaqueNota { margin-top: 8px; font-size: .82rem; color: #C9C4B4; }
+  /* Nota curta sob o título de uma seção */
+  .notaSecao { font-size: .8rem; color: var(--muted); margin: -6px 0 10px; line-height: 1.5; }
+  .semMov { font-size: .9rem; color: var(--muted); padding: 4px 16px 16px; line-height: 1.5; }
+  /* Botão flutuante do WhatsApp */
+  .zap { position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px;
+         border-radius: 50%; background: #25D366; color: #fff; display: flex;
+         align-items: center; justify-content: center; z-index: 50;
+         box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+  .zap svg { width: 30px; height: 30px; }
 
   /* ===== Rodapé ===== */
   .rodape { margin: 34px 0 0; padding: 30px 24px 40px; text-align: center;
@@ -158,11 +182,20 @@
     <div class="saudacao">
       <h1 id="ola"></h1>
       <p id="atualizado"></p>
+      <div class="cuidando">Estamos acompanhando cada movimentação de perto. Você não
+        precisa tomar nenhuma providência a partir desta página — se algo exigir a sua
+        participação, nós entraremos em contato.</div>
     </div>
+    <div id="destaque"></div>
     <div id="processos"></div>
   </div>
 
 </div>
+
+<a class="zap" href="https://wa.me/5598981279164?text=Ol%C3%A1%21%20Vim%20pelo%20Portal%20do%20Cliente."
+   target="_blank" rel="noopener" aria-label="Falar com o escritório no WhatsApp">
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.4A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3.1.8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.6-6.1c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.7.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.4-3c-.3-.4.3-.4.7-1.3.1-.2 0-.4 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.3-.9.9-.9 2.2s1 2.6 1.1 2.7c.1.2 1.9 2.9 4.6 4.1.6.3 1.1.4 1.5.6.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.6-.3z"/></svg>
+</a>
 
 <div class="rodape">
   <div class="firma">Eceiza Nunes Advogados Associados</div>
@@ -218,6 +251,64 @@
       texto += ", às " + m[4] + "h" + (m[5] === "00" ? "" : m[5]);
     }
     return texto;
+  }
+
+  // "há 3 dias" / "daqui a 5 dias" — ajuda o leigo a se situar sem contar nos dedos.
+  function relativo(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+    if (!m) return null;
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    var agora = new Date();
+    var hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+    var dias = Math.round((d - hoje) / 86400000);
+    if (dias === 0) return "hoje";
+    if (dias === 1) return "amanhã";
+    if (dias === -1) return "ontem";
+    if (dias > 1 && dias <= 60) return "daqui a " + dias + " dias";
+    if (dias < -1 && dias >= -60) return "há " + (-dias) + " dias";
+    return null;
+  }
+
+  // ===== Glossário leigo ("Em palavras simples") =====
+  // Traduz o juridiquês do título do evento — primeira regra que casar vence.
+  var GLOSSARIO = [
+    [/tr[âa]nsito em julgado/i, "A decisão se tornou definitiva — não cabe mais recurso."],
+    [/senten[çc]a/i, "O juiz proferiu a decisão desta fase do processo. O escritório analisa o conteúdo e os próximos passos."],
+    [/audi[êe]ncia/i, "Sessão oficial do processo. Se a sua presença for necessária, o escritório combina tudo com você com antecedência."],
+    [/despacho/i, "O juiz deu um encaminhamento ao processo — ato de andamento, sem decidir a questão principal."],
+    [/liminar|tutela|decis[ãa]o/i, "O juiz decidiu uma questão do processo. O escritório avalia o teor e a necessidade de alguma medida."],
+    [/conclus/i, "O processo está com o juiz, aguardando análise ou decisão."],
+    [/publica[çc][ãa]o|diário da justi[çc]a|djen/i, "Comunicação oficial do tribunal no Diário de Justiça Eletrônico — em geral um despacho, decisão ou intimação. O escritório acompanha todas as publicações."],
+    [/contesta[çc][ãa]o/i, "A parte contrária apresentou a defesa dela."],
+    [/cita[çc][ãa]o|citado/i, "A outra parte foi formalmente chamada para responder ao processo."],
+    [/intima[çc][ãa]o|intimado/i, "Comunicação oficial do tribunal a uma das partes do processo."],
+    [/peti[çc][ãa]o|manifesta[çc][ãa]o/i, "Um pedido ou manifestação por escrito foi apresentado no processo."],
+    [/juntada|anexad/i, "Um documento novo foi anexado aos autos do processo."],
+    [/distribui[çc]|distribu[íi]do/i, "O processo foi encaminhado à vara e ao juiz responsáveis."],
+    [/apela[çc][ãa]o|agravo|embargos|recurso/i, "Uma das partes pediu a revisão de uma decisão — o processo segue para nova análise."],
+    [/per[íi]cia|laudo/i, "O processo envolve a análise técnica de um especialista nomeado."],
+    [/acordo|concilia[çc]|homolog/i, "Movimentação relacionada a acordo entre as partes."],
+    [/alvar[áa]|expedi[çc]/i, "O tribunal emitiu um documento — por exemplo, para liberação de valores ou cumprimento de ordem."],
+    [/arquiv/i, "O processo foi arquivado nesta fase."],
+    [/suspens/i, "O andamento do processo está temporariamente suspenso."],
+    [/penhora|bloqueio|pagamento|dep[óo]sito/i, "Há movimentação sobre valores ou bens no processo."]
+  ];
+  function explicacao(titulo) {
+    var t = String(titulo || "");
+    for (var i = 0; i < GLOSSARIO.length; i++) {
+      if (GLOSSARIO[i][0].test(t)) return GLOSSARIO[i][1];
+    }
+    return null;
+  }
+
+  // Situação em linguagem do cliente.
+  function situacaoAmigavel(s) {
+    var t = String(s || "");
+    if (/arquiv/i.test(t)) return "Arquivado";
+    if (/suspens/i.test(t)) return "Suspenso";
+    if (/encerr|baixad|extint/i.test(t)) return "Encerrado";
+    if (/^ativo$/i.test(t)) return "Em andamento";
+    return t;
   }
 
   // ===== Erros amigáveis =====
@@ -293,15 +384,22 @@
     return n;
   }
 
-  function secaoLista(titulo, itens) {
+  function secaoLista(titulo, itens, opcoes) {
+    opcoes = opcoes || {};
     if (!itens || !itens.length) return null;
     var sec = el("div", "secao");
     sec.appendChild(el("div", "microTitulo", titulo));
+    if (opcoes.nota) sec.appendChild(el("p", "notaSecao", opcoes.nota));
     var ul = el("ul", "itens");
     itens.forEach(function (item) {
       var li = document.createElement("li");
-      li.appendChild(el("span", "itemData", dataExtenso(item.data)));
+      var rel = relativo(item.data);
+      li.appendChild(el("span", "itemData", dataExtenso(item.data) + (rel ? " · " + rel : "")));
       li.appendChild(el("span", "itemTexto", item.titulo || ""));
+      if (opcoes.explicar) {
+        var exp = explicacao(item.titulo);
+        if (exp) li.appendChild(el("span", "significa", exp));
+      }
       if (item.detalhe) li.appendChild(blocoTeor(item.detalhe));
       ul.appendChild(li);
     });
@@ -371,13 +469,20 @@
       topo.appendChild(linha);
     }
     if (p.orgao) topo.appendChild(el("div", "orgao", p.orgao));
-    if (p.situacao) topo.appendChild(el("span", "chip", p.situacao));
+    if (p.situacao) topo.appendChild(el("span", "chip", situacaoAmigavel(p.situacao)));
     card.appendChild(topo);
 
-    [ secaoLista("Últimas movimentações", p.eventos),
-      secaoLista("Próximos passos", p.prazos),
-      secaoLista("Audiências", p.audiencias)
+    // Ordem pela utilidade para o cliente: o que exige atenção primeiro.
+    [ secaoLista("Audiências marcadas", p.audiencias,
+        { nota: "Se a sua presença for necessária, combinaremos todos os detalhes com você com antecedência." }),
+      secaoLista("Próximos passos", p.prazos,
+        { nota: "Compromissos sob responsabilidade do escritório — você não precisa fazer nada." }),
+      secaoLista("Últimas movimentações", p.eventos, { explicar: true })
     ].forEach(function (sec) { if (sec) card.appendChild(sec); });
+    if (!p.eventos || !p.eventos.length) {
+      card.appendChild(el("p", "semMov",
+        "Sem movimentações novas no período — isso é normal quando o processo aguarda análise do tribunal."));
+    }
     return card;
   }
 
@@ -385,11 +490,36 @@
     esconder("gate");
     var primeiro = String(resposta.nome || "").trim().split(/\s+/)[0] || "";
     $("ola").textContent = primeiro ? "Olá, " + primeiro + "!" : "Olá!";
-    $("atualizado").textContent = "Atualizado em " + dataExtenso(resposta.atualizado_em);
+    $("atualizado").textContent = "Atualizado pelo escritório em " + dataExtenso(resposta.atualizado_em);
 
     var alvo = $("processos");
     while (alvo.firstChild) alvo.removeChild(alvo.firstChild);
     var lista = (resposta.snapshot && resposta.snapshot.processos) || [];
+
+    // Destaque de audiências (o que mais gera ansiedade e perguntas).
+    var slot = $("destaque");
+    while (slot.firstChild) slot.removeChild(slot.firstChild);
+    var futuras = [];
+    lista.forEach(function (p) {
+      (p.audiencias || []).forEach(function (a) {
+        futuras.push({ data: a.data, processo: p.titulo || "Processo" });
+      });
+    });
+    futuras.sort(function (a, b) { return String(a.data).localeCompare(String(b.data)); });
+    if (futuras.length) {
+      var box = el("div", "destaque");
+      box.appendChild(el("div", "destaqueTitulo", futuras.length === 1
+        ? "Você tem uma audiência marcada"
+        : "Você tem " + futuras.length + " audiências marcadas"));
+      futuras.slice(0, 3).forEach(function (a) {
+        var rel = relativo(a.data);
+        box.appendChild(el("div", "destaqueItem",
+          dataExtenso(a.data) + (rel ? " (" + rel + ")" : "") + " — " + a.processo));
+      });
+      box.appendChild(el("p", "destaqueNota",
+        "Guarde a data. Confirmaremos com você todos os detalhes com antecedência."));
+      slot.appendChild(box);
+    }
     if (!lista.length) {
       var vazio = el("div", "card", "Nenhum processo em acompanhamento no momento. Em caso de dúvida, fale com o escritório.");
       alvo.appendChild(vazio);
