@@ -18,8 +18,9 @@
   body { font: 17px/1.6 var(--sans); background: var(--papel); color: var(--tinta); }
 
   /* ===== Hero — papelaria do escritório ===== */
-  .hero { background: var(--marinho); line-height: 0; }
-  .hero img { width: 100%; max-width: 1100px; display: block; margin: 0 auto; height: auto; }
+  /* Banner ponta a ponta, como no timbrado do Word — sem faixa de tom diferente. */
+  .hero { line-height: 0; }
+  .hero img { width: 100%; display: block; height: auto; }
   .filete { height: 3px; background: linear-gradient(90deg, transparent, var(--dourado) 18%, var(--dourado) 82%, transparent); }
 
   .wrap { max-width: 760px; margin: 0 auto; padding: 20px 18px 0; }
@@ -95,6 +96,15 @@
   .itemData { display: block; font-size: .8rem; color: var(--muted); letter-spacing: .03em;
               font-variant-numeric: tabular-nums; }
   .itemTexto { display: block; font-size: .98rem; line-height: 1.45; }
+  /* Teor da movimentação (texto da publicação) — caixinha discreta, expansível */
+  .teor { margin-top: 8px; background: #FBFAF7; border: 1px solid var(--linha);
+          border-left: 3px solid var(--dourado); border-radius: 8px; padding: 10px 12px; }
+  .teorTexto { font-size: .88rem; line-height: 1.55; color: #4A4C55;
+               white-space: pre-line; word-break: break-word; }
+  .btnTeor { margin-top: 8px; background: none; border: none; padding: 0;
+             color: var(--marinho); font-size: .84rem; font-weight: 600;
+             text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+             -webkit-tap-highlight-color: transparent; }
 
   /* ===== Rodapé ===== */
   .rodape { margin: 34px 0 0; padding: 30px 24px 40px; text-align: center;
@@ -292,10 +302,33 @@
       var li = document.createElement("li");
       li.appendChild(el("span", "itemData", dataExtenso(item.data)));
       li.appendChild(el("span", "itemTexto", item.titulo || ""));
+      if (item.detalhe) li.appendChild(blocoTeor(item.detalhe));
       ul.appendChild(li);
     });
     sec.appendChild(ul);
     return sec;
+  }
+
+  // Teor da movimentação (ex.: texto da publicação do DJEN) — recolhido por
+  // padrão quando longo, com "ver teor completo" para expandir.
+  var LIMITE_TEOR = 280;
+  function blocoTeor(texto) {
+    var caixa = el("div", "teor");
+    var curto = texto.length > LIMITE_TEOR + 40;
+    var p = el("p", "teorTexto", curto ? texto.slice(0, LIMITE_TEOR).replace(/\s+\S*$/, "") + "…" : texto);
+    caixa.appendChild(p);
+    if (curto) {
+      var btn = el("button", "btnTeor", "Ver teor completo");
+      btn.type = "button";
+      var aberto = false;
+      btn.addEventListener("click", function () {
+        aberto = !aberto;
+        p.textContent = aberto ? texto : texto.slice(0, LIMITE_TEOR).replace(/\s+\S*$/, "") + "…";
+        btn.textContent = aberto ? "Ocultar teor" : "Ver teor completo";
+      });
+      caixa.appendChild(btn);
+    }
+    return caixa;
   }
 
   function botaoCopiar(texto, alvoSpan) {
