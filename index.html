@@ -124,10 +124,18 @@
              color: var(--marinho); font-size: .84rem; font-weight: 600;
              text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
              -webkit-tap-highlight-color: transparent; }
-  /* "Em palavras simples" — tradução leiga do evento */
+  /* "Em palavras simples" — tradução leiga do evento (glossário por regras) */
   .significa { display: block; margin-top: 4px; font-size: .84rem; line-height: 1.5;
                color: #6E6633; }
   .significa::before { content: "Em palavras simples: "; font-weight: 600; }
+  /* Explicação da IA (gerada pelo escritório ao publicar) */
+  .explicaIA { margin-top: 8px; background: #F5F2FB; border: 1px solid #E1D8F0;
+               border-left: 3px solid #7E6BB0; border-radius: 8px; padding: 9px 12px; }
+  .explicaIA-cab { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .explicaIA-cab svg { width: 14px; height: 14px; color: #7E6BB0; }
+  .explicaIA-cab span { font-size: .72rem; letter-spacing: .04em; font-weight: 700;
+                        text-transform: uppercase; color: #6A5A9A; }
+  .explicaIA-txt { font-size: .9rem; line-height: 1.55; color: #40384F; }
   /* Nota de tranquilidade sob a saudação */
   .cuidando { margin: 14px 0 4px; padding: 12px 14px; border-radius: 10px;
               background: #EFF3EC; border: 1px solid #D8E2D3; color: #3E5138;
@@ -313,7 +321,9 @@
 
   <p class="nota">Página operada pelo próprio escritório (controlador dos dados — LGPD).
      Conteúdo meramente informativo, atualizado pelo advogado responsável;
-     não substitui a consulta aos autos.</p>
+     não substitui a consulta aos autos. Os resumos “em palavras simples” são
+     gerados de forma automática, para facilitar o entendimento — em caso de
+     dúvida, fale com o escritório.</p>
 </div>
 
 <script>
@@ -543,14 +553,36 @@
       li.appendChild(el("span", "itemData", dataExtenso(item.data) + (rel ? " · " + rel : "")));
       li.appendChild(el("span", "itemTexto", item.titulo || ""));
       if (opcoes.explicar) {
-        var exp = explicacao(item.titulo);
-        if (exp) li.appendChild(el("span", "significa", exp));
+        if (item.explicacao) {
+          li.appendChild(blocoExplicacaoIA(item.explicacao));
+        } else {
+          var exp = explicacao(item.titulo);
+          if (exp) li.appendChild(el("span", "significa", exp));
+        }
       }
       if (item.detalhe) li.appendChild(blocoTeor(item.detalhe));
       ul.appendChild(li);
     });
     sec.appendChild(ul);
     return sec;
+  }
+
+  // Explicação da IA (gerada pelo escritório ao publicar): caixa com selo
+  // "resumo automático" e o texto em linguagem simples.
+  function blocoExplicacaoIA(texto) {
+    var caixa = el("div", "explicaIA");
+    var cab = el("div", "explicaIA-cab");
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+    var p1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p1.setAttribute("d", "M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9zM19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z");
+    p1.setAttribute("fill", "currentColor");
+    svg.appendChild(p1);
+    cab.appendChild(svg);
+    cab.appendChild(el("span", null, "Em palavras simples"));
+    caixa.appendChild(cab);
+    caixa.appendChild(el("p", "explicaIA-txt", texto));
+    return caixa;
   }
 
   // Teor da movimentação (ex.: texto da publicação do DJEN) — recolhido por
