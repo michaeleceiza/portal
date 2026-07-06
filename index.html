@@ -71,6 +71,10 @@
   #painel .saudacao { padding: 30px 4px 4px; }
   #painel .saudacao h1 { font-size: 1.9rem; }
   #painel .saudacao p { color: var(--muted); margin-top: 4px; }
+  .saudacaoTopo { display: flex; align-items: center; gap: 16px; }
+  .avatarCliente { width: 64px; height: 64px; border-radius: 50%; object-fit: cover;
+    flex: none; border: 2px solid var(--dourado);
+    box-shadow: 0 2px 10px rgba(0,0,0,.14); background: var(--marinho); }
 
   .processo { padding: 0; overflow: hidden; }
   .processo .topo { padding: 22px 22px 16px; border-bottom: 1px solid var(--linha);
@@ -246,8 +250,13 @@
   <!-- ===== Tela 2: painel ===== -->
   <div id="painel" class="oculto">
     <div class="saudacao">
-      <h1 id="ola"></h1>
-      <p id="atualizado"></p>
+      <div class="saudacaoTopo">
+        <img id="avatarCliente" class="avatarCliente oculto" alt="" />
+        <div>
+          <h1 id="ola"></h1>
+          <p id="atualizado"></p>
+        </div>
+      </div>
       <div class="cuidando">Estamos acompanhando cada movimentação de perto. Você não
         precisa tomar nenhuma providência a partir desta página — se algo exigir a sua
         participação, nós entraremos em contato.</div>
@@ -360,13 +369,54 @@
   var MESES = ["janeiro","fevereiro","março","abril","maio","junho",
                "julho","agosto","setembro","outubro","novembro","dezembro"];
 
+  // Humaniza nomes que vêm em CAIXA ALTA do DataJud/DJEN ("ESTADO DO MARANHAO"),
+  // para o cliente ler com conforto. Só age quando está TODO em maiúsculas; nomes
+  // já formatados ficam intactos. Preserva conectores, siglas curtas e tokens com
+  // dígito/barra. Espelha NomeParte.humanizar do app.
+  var CONECTORES = { de:1, da:1, do:1, das:1, dos:1, e:1, em:1, a:1, o:1, "à":1, ao:1, aos:1, "às":1, na:1, no:1, nas:1, nos:1, com:1, sem:1, por:1 };
+  function humanizarNome(s) {
+    s = String(s || "");
+    if (!s) return s;
+    // Age PALAVRA A PALAVRA: só toca as que estão TODAS em maiúsculas (assim
+    // "3ª VARA ... DE SÃO LUÍS — São Luís" também vira legível, sem mexer no que
+    // já está formatado como "São Luís").
+    return s.split(/\s+/).map(function (w, i) {
+      if (/[0-9/.\-]/.test(w)) return w;                       // S/A, 3ª, LTDA. etc.
+      if (w !== w.toUpperCase() || w === w.toLowerCase()) return w;  // não é TODO maiúsculo → intacto
+      var lower = w.toLowerCase();
+      if (i > 0 && CONECTORES[lower]) return lower;             // conector: DE→de
+      if (!/[AEIOUÁÀÂÃÉÊÍÎÓÔÕÚÜ]/.test(w)) return w;            // sem vogal = sigla (TRT, STF, PT) → preserva
+      return lower.charAt(0).toUpperCase() + lower.slice(1);   // SÃO→São, VARA→Vara
+    }).join(" ");
+  }
+
   function dataExtenso(iso) {
     // Aceita "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm..." e timestamptz completo.
-    var m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(iso || ""));
-    if (!m) return String(iso || "");
-    var texto = parseInt(m[3], 10) + " de " + MESES[parseInt(m[2], 10) - 1] + " de " + m[1];
-    if (m[4] && !(m[4] === "00" && m[5] === "00")) {
-      texto += ", às " + m[4] + "h" + (m[5] === "00" ? "" : m[5]);
+    var s = String(iso || "");
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+    if (!m) return s;
+    var ano = m[1], mes = parseInt(m[2], 10), dia = parseInt(m[3], 10);
+    var hora = m[4], min = m[5];
+    // Se o carimbo tem FUSO (Z ou ±HH:MM — ex.: atualizado_em, timestamptz do
+    // Supabase em UTC), converte para o horário de Brasília. As datas do snapshot
+    // vêm SEM fuso (já formatadas em America/Sao_Paulo pelo app) e ficam como estão.
+    if (hora && /(Z|[+\-]\d{2}:?\d{2})$/.test(s)) {
+      var d = new Date(s);
+      if (!isNaN(d.getTime())) {
+        try {
+          var partes = new Intl.DateTimeFormat("pt-BR", {
+            timeZone: "America/Sao_Paulo", day: "numeric", month: "numeric",
+            year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false
+          }).formatToParts(d);
+          var get = function (t) { for (var i = 0; i < partes.length; i++) if (partes[i].type === t) return partes[i].value; return ""; };
+          dia = parseInt(get("day"), 10); mes = parseInt(get("month"), 10); ano = get("year");
+          hora = get("hour"); min = get("minute");
+        } catch (e) { /* Intl indisponível: mantém os dígitos originais */ }
+      }
+    }
+    var texto = dia + " de " + MESES[mes - 1] + " de " + ano;
+    if (hora && !(hora === "00" && min === "00")) {
+      texto += ", às " + hora + "h" + (min === "00" ? "" : min);
     }
     return texto;
   }
@@ -509,7 +559,7 @@
     if (!r) return null;
     var campos = [];
     if (r.assunto)      campos.push({ rot: "Assunto", val: r.assunto, full: true, destaque: true });
-    if (r.parteAdversa) campos.push({ rot: "Parte contrária", val: r.parteAdversa, full: true });
+    if (r.parteAdversa) campos.push({ rot: "Parte contrária", val: humanizarNome(r.parteAdversa), full: true });
     if (r.area)         campos.push({ rot: "Área", val: r.area });
     if (r.classe)       campos.push({ rot: "Tipo de ação", val: r.classe });
     if (r.valor)        campos.push({ rot: "Valor da causa", val: r.valor });
@@ -637,7 +687,7 @@
   function cartaoProcesso(p) {
     var card = el("div", "card processo");
     var topo = el("div", "topo");
-    topo.appendChild(el("div", "tituloCaso", p.titulo || "Processo"));
+    topo.appendChild(el("div", "tituloCaso", humanizarNome(p.titulo) || "Processo"));
 
     if (p.numero) {
       var linha = el("div", "numLinha");
@@ -646,7 +696,7 @@
       linha.appendChild(botaoCopiar(p.numero, num));
       topo.appendChild(linha);
     }
-    if (p.orgao) topo.appendChild(el("div", "orgao", p.orgao));
+    if (p.orgao) topo.appendChild(el("div", "orgao", humanizarNome(p.orgao)));
     if (p.situacao) topo.appendChild(el("span", "chip", situacaoAmigavel(p.situacao)));
     card.appendChild(topo);
 
@@ -672,6 +722,19 @@
     var primeiro = String(resposta.nome || "").trim().split(/\s+/)[0] || "";
     $("ola").textContent = primeiro ? "Olá, " + primeiro + "!" : "Olá!";
     $("atualizado").textContent = "Atualizado pelo escritório em " + dataExtenso(resposta.atualizado_em);
+
+    // Foto do cliente (opcional) na saudação — tom acolhedor e personalizado.
+    var avatar = (resposta.snapshot && resposta.snapshot.avatar) || "";
+    var avImg = $("avatarCliente");
+    if (avImg) {
+      if (avatar && /^data:image\//.test(avatar)) {
+        avImg.src = avatar;
+        avImg.alt = primeiro ? "Foto de " + primeiro : "Foto do cliente";
+        avImg.classList.remove("oculto");
+      } else {
+        avImg.classList.add("oculto");
+      }
+    }
 
     var alvo = $("processos");
     while (alvo.firstChild) alvo.removeChild(alvo.firstChild);
