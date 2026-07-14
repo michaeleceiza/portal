@@ -154,6 +154,26 @@
   /* Nota curta sob o título de uma seção */
   .notaSecao { font-size: .8rem; color: var(--muted); margin: -6px 0 10px; line-height: 1.5; }
   .semMov { font-size: .9rem; color: var(--muted); padding: 4px 16px 16px; line-height: 1.5; }
+
+  /* ===== Documentos solicitados (upload do cliente) — item #21 ===== */
+  .checklist { padding: 6px 0 4px; }
+  .checklist .microTitulo { padding: 0 22px; }
+  .checklistNota { font-size: .86rem; color: var(--muted); padding: 0 22px 14px; line-height: 1.5; }
+  ul.checklistItens { list-style: none; }
+  .checklistItem { padding: 16px 22px; border-top: 1px dashed var(--linha); }
+  .checklistItem:first-of-type { border-top: none; }
+  .checklistRot { font-size: .98rem; font-weight: 600; color: var(--tinta); margin-bottom: 10px; }
+  .checklistRecebido { display: flex; align-items: center; gap: 9px; font-size: .95rem;
+                        color: #3E5138; font-weight: 600; }
+  .checklistRecebido svg { width: 19px; height: 19px; flex: none; }
+  .checklistArea { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .checklistArea input[type=file] { flex: 1 1 220px; font-size: .86rem; font-family: var(--sans);
+    color: var(--muted); max-width: 100%; }
+  .checklistStatus { font-size: .84rem; line-height: 1.4; }
+  .checklistStatus:empty { display: none; }
+  .checklistStatus.enviando { color: var(--marinho); }
+  .checklistStatus.erro { color: var(--err); font-weight: 600; }
+
   /* Botão flutuante do WhatsApp */
   .zap { position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px;
          border-radius: 50%; background: #25D366; color: #fff; display: flex;
@@ -262,6 +282,7 @@
         participação, nós entraremos em contato.</div>
     </div>
     <div id="destaque"></div>
+    <div id="checklist"></div>
     <div id="processos"></div>
   </div>
 
@@ -344,6 +365,7 @@
   var token = (location.hash || "").replace(/^#/, "") ||
               new URLSearchParams(location.search).get("t") || "";
   var enviando = false; // CPF fica só em memória (variável local) — nunca em localStorage.
+  var cpfAtual = ""; // idem — guardado em memória só após o gate validar, p/ reusar no upload.
 
   function $(id) { return document.getElementById(id); }
   function mostrar(id) { $(id).classList.remove("oculto"); }
@@ -490,6 +512,17 @@
     return "Não foi possível carregar as informações agora. Tente novamente em instantes.";
   }
 
+  // Erros do envio de documento (item #21) — mensagens específicas do fluxo de upload.
+  function mensagemAmigavelDocumento(m) {
+    if (/maior que 25 ?mb/i.test(m))
+      return "Este arquivo passa de 25 MB e não foi enviado. Tente compactar o arquivo, dividir em partes menores, ou entre em contato com o escritório para enviar de outra forma.";
+    if (/link invalido|cpf nao confere/i.test(m))
+      return "Sua sessão expirou. Atualize a página e informe o CPF novamente para continuar o envio.";
+    if (/documento nao encontrado/i.test(m))
+      return "Este documento não está mais disponível para envio. Atualize a página.";
+    return "Não foi possível enviar agora. Verifique sua conexão e tente novamente.";
+  }
+
   function erroGate(texto) {
     var box = $("erroGate");
     box.textContent = texto;
@@ -534,7 +567,9 @@
       if (resposta && resposta.erro === "indisponivel") {
         erroGate("Este portal não está mais disponível. Se precisar acompanhar seus processos, entre em contato com o escritório.");
       } else {
+        cpfAtual = cpf;
         renderizarPainel(resposta);
+        carregarChecklist();
       }
     } catch (err) {
       erroGate(mensagemAmigavel(err.message));
@@ -715,6 +750,123 @@
         "Sem movimentações novas no período — isso é normal quando o processo aguarda análise do tribunal."));
     }
     return card;
+  }
+
+  // ===== Documentos solicitados (item #21) =====
+  var LIMITE_DOCUMENTO = 25 * 1024 * 1024; // mesmo teto do servidor (portal_documento_enviar).
+
+  function iconeRecebido() {
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor"); svg.setAttribute("stroke-width", "2.2");
+    svg.setAttribute("stroke-linecap", "round"); svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    var circulo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circulo.setAttribute("cx", "12"); circulo.setAttribute("cy", "12"); circulo.setAttribute("r", "9.3");
+    var marca = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    marca.setAttribute("d", "m7.8 12.3 2.6 2.6 5.8-6.2");
+    svg.appendChild(circulo);
+    svg.appendChild(marca);
+    return svg;
+  }
+
+  // (Re)desenha UM item do checklist a partir do estado atual de `item.enviado`
+  // — chamada de novo após um envio bem-sucedido, sem recarregar a página.
+  function atualizarItemChecklist(li, item) {
+    while (li.firstChild) li.removeChild(li.firstChild);
+    if (item.enviado) {
+      var ok = el("div", "checklistRecebido");
+      ok.appendChild(iconeRecebido());
+      ok.appendChild(el("span", null, item.rotulo + " — recebido"));
+      li.appendChild(ok);
+      return;
+    }
+
+    li.appendChild(el("div", "checklistRot", item.rotulo));
+    var area = el("div", "checklistArea");
+    var input = document.createElement("input");
+    input.type = "file";
+    input.setAttribute("aria-label", "Enviar arquivo: " + item.rotulo);
+    area.appendChild(input);
+    var status = el("span", "checklistStatus");
+    area.appendChild(status);
+    li.appendChild(area);
+
+    input.addEventListener("change", function () {
+      var arquivo = input.files && input.files[0];
+      if (!arquivo) return;
+      status.className = "checklistStatus";
+      status.textContent = "";
+
+      if (arquivo.size > LIMITE_DOCUMENTO) {
+        status.className = "checklistStatus erro";
+        var tamanhoMB = (arquivo.size / (1024 * 1024)).toFixed(1);
+        status.textContent = "Este arquivo tem " + tamanhoMB + " MB, acima do limite de 25 MB, e não foi enviado. " +
+          "Tente compactar o arquivo, dividir em partes menores, ou entre em contato com o escritório para enviar de outra forma.";
+        input.value = "";
+        return;
+      }
+
+      input.disabled = true;
+      status.className = "checklistStatus enviando";
+      status.textContent = "Enviando…";
+
+      var leitor = new FileReader();
+      leitor.onerror = function () {
+        input.disabled = false;
+        status.className = "checklistStatus erro";
+        status.textContent = "Não foi possível ler o arquivo. Tente novamente.";
+      };
+      leitor.onload = async function () {
+        try {
+          var base64 = String(leitor.result || "").replace(/^data:[^,]*,/, "");
+          await rpc("portal_documento_enviar", {
+            p_token: token, p_cpf: cpfAtual, p_documento_id: item.id,
+            p_nome_arquivo: arquivo.name, p_content_type: arquivo.type,
+            p_conteudo_base64: base64
+          });
+          item.enviado = true;
+          atualizarItemChecklist(li, item); // some o input, mostra "recebido" — sem reload.
+        } catch (err) {
+          input.disabled = false;
+          status.className = "checklistStatus erro";
+          status.textContent = mensagemAmigavelDocumento(err.message);
+        }
+      };
+      leitor.readAsDataURL(arquivo);
+    });
+  }
+
+  function cartaoChecklist(itens) {
+    var card = el("div", "card checklist");
+    card.appendChild(el("div", "microTitulo", "Documentos solicitados"));
+    card.appendChild(el("p", "checklistNota",
+      "O escritório pediu os documentos abaixo. Envie cada um diretamente por aqui, com segurança."));
+    var ul = el("ul", "checklistItens");
+    itens.forEach(function (item) {
+      var li = document.createElement("li");
+      li.className = "checklistItem";
+      atualizarItemChecklist(li, item);
+      ul.appendChild(li);
+    });
+    card.appendChild(ul);
+    return card;
+  }
+
+  // Busca o checklist do cliente (token+CPF já validados no gate) e só desenha a
+  // seção se houver pelo menos um documento pedido — caso contrário a página
+  // fica idêntica a hoje. Falha de rede aqui não deve derrubar o resto do painel.
+  async function carregarChecklist() {
+    var slot = $("checklist");
+    while (slot.firstChild) slot.removeChild(slot.firstChild);
+    var itens;
+    try {
+      itens = await rpc("portal_checklist_obter", { p_token: token, p_cpf: cpfAtual });
+    } catch (e) {
+      return;
+    }
+    if (!itens || !itens.length) return;
+    slot.appendChild(cartaoChecklist(itens));
   }
 
   function renderizarPainel(resposta) {
