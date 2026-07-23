@@ -140,6 +140,48 @@
   .explicaIA-cab span { font-size: .72rem; letter-spacing: .04em; font-weight: 700;
                         text-transform: uppercase; color: #6A5A9A; }
   .explicaIA-txt { font-size: .9rem; line-height: 1.55; color: #40384F; }
+  /* ===== "Entenda a decisão" — card editorial (formato STJ, N10b) ===== */
+  .entenda { margin-top: 10px; border: 1px solid var(--linha); border-radius: 12px;
+             background: #fff; overflow: hidden;
+             box-shadow: 0 1px 2px rgba(27,40,73,.06); }
+  .entendaPergunta { background: var(--marinho); color: #F4EFE4; padding: 14px 16px; }
+  .entendaPergunta .p { font-family: var(--serif); font-size: 1.06rem; color: #E8CE93;
+                        line-height: 1.35; }
+  .entendaPergunta .r { margin-top: 6px; font-size: .95rem; font-weight: 600; line-height: 1.5; }
+  .entendaBloco { padding: 12px 16px; border-top: 1px dashed var(--linha); }
+  .entendaBloco:first-child { border-top: none; }
+  .entendaRot { display: flex; align-items: center; gap: 6px; font-size: .7rem;
+                letter-spacing: .12em; text-transform: uppercase; color: var(--dourado);
+                font-weight: 700; margin-bottom: 5px; }
+  .entendaRot svg { width: 13px; height: 13px; flex: none; }
+  .entendaTxt { font-size: .92rem; line-height: 1.55; }
+  .entendaPassos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 620px) { .entendaPassos { grid-template-columns: 1fr; } }
+  .entendaPassos .colRot { font-size: .8rem; font-weight: 700; color: var(--marinho);
+                           margin-bottom: 2px; }
+  .entendaPassos ul { list-style: none; }
+  .entendaPassos li { position: relative; padding: 2px 0 2px 16px; font-size: .9rem;
+                      line-height: 1.45; }
+  .entendaPassos li::before { content: ""; position: absolute; left: 2px; top: .58em;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--dourado); }
+  .entendaPrazo { background: var(--dourado-suave); }
+  .entendaImportante { background: #FDF6E4; }
+  .entendaImportante .entendaRot { color: #8A6D1F; }
+  .tlMarco { position: relative; padding: 0 0 12px 22px; font-size: .9rem; line-height: 1.45; }
+  .tlMarco::before { content: ""; position: absolute; left: 4px; top: .45em; width: 8px;
+    height: 8px; border-radius: 50%; background: #CFC9BC; }
+  .tlMarco.agora::before { background: var(--dourado); }
+  .tlMarco::after { content: ""; position: absolute; left: 7.5px; top: calc(.45em + 10px);
+    bottom: 2px; width: 1px; background: var(--linha); }
+  .tlMarco:last-child { padding-bottom: 0; }
+  .tlMarco:last-child::after { display: none; }
+  .tlRot { display: block; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+           color: var(--muted); font-weight: 700; }
+  .entendaTrecho { margin-top: 6px; font-size: .86rem; line-height: 1.55; color: #4A4C55;
+    font-style: italic; border-left: 3px solid var(--dourado); padding: 8px 12px;
+    background: #FBFAF7; border-radius: 6px; white-space: pre-line; word-break: break-word; }
+  .entendaRodape { padding: 10px 16px 12px; border-top: 1px solid var(--linha);
+    background: #FCFBF8; font-size: .76rem; color: var(--muted); line-height: 1.5; }
   /* Nota de tranquilidade sob a saudação */
   .cuidando { margin: 14px 0 4px; padding: 12px 14px; border-radius: 10px;
               background: #EFF3EC; border: 1px solid #D8E2D3; color: #3E5138;
@@ -163,6 +205,13 @@
   .checklistItem { padding: 16px 22px; border-top: 1px dashed var(--linha); }
   .checklistItem:first-of-type { border-top: none; }
   .checklistRot { font-size: .98rem; font-weight: 600; color: var(--tinta); margin-bottom: 10px; }
+  /* Cabeçalho do grupo: a que caso os documentos abaixo pertencem. Nome
+     amigável do caso (nunca o número do processo) — o cliente reconhece
+     "Ação trabalhista — Construtora X", não "0801234-56.2025.8.10.0001". */
+  .checklistCaso { font-size: .82rem; font-weight: 700; letter-spacing: .04em;
+                   text-transform: uppercase; color: var(--muted);
+                   padding: 14px 22px 2px; }
+  .checklistCaso:first-child { padding-top: 4px; }
   .checklistRecebido { display: flex; align-items: center; gap: 9px; font-size: .95rem;
                         color: #3E5138; font-weight: 600; }
   .checklistRecebido svg { width: 19px; height: 19px; flex: none; }
@@ -632,24 +681,155 @@
     sec.appendChild(el("div", "microTitulo", titulo));
     if (opcoes.nota) sec.appendChild(el("p", "notaSecao", opcoes.nota));
     var ul = el("ul", "itens");
+    var timelineFeita = false; // a mini-timeline aparece só no card mais recente
     itens.forEach(function (item) {
       var li = document.createElement("li");
       var rel = relativo(item.data);
       li.appendChild(el("span", "itemData", dataExtenso(item.data) + (rel ? " · " + rel : "")));
       li.appendChild(el("span", "itemTexto", item.titulo || ""));
-      if (opcoes.explicar) {
-        if (item.explicacao) {
-          li.appendChild(blocoExplicacaoIA(item.explicacao));
-        } else {
-          var exp = explicacao(item.titulo);
-          if (exp) li.appendChild(el("span", "significa", exp));
+      if (opcoes.explicar && item.entenda) {
+        // N10b — card estruturado "Entenda a decisão": substitui a caixa de
+        // texto plano E o teor solto (o texto original vai colapsado no card).
+        var onde = timelineFeita ? null : (opcoes.ondeEstamos || null);
+        if (onde) timelineFeita = true;
+        li.appendChild(cardEntenda(item.entenda, item.detalhe, onde));
+      } else {
+        if (opcoes.explicar) {
+          if (item.explicacao) {
+            li.appendChild(blocoExplicacaoIA(item.explicacao));
+          } else {
+            var exp = explicacao(item.titulo);
+            if (exp) li.appendChild(el("span", "significa", exp));
+          }
         }
+        if (item.detalhe) li.appendChild(blocoTeor(item.detalhe));
       }
-      if (item.detalhe) li.appendChild(blocoTeor(item.detalhe));
       ul.appendChild(li);
     });
     sec.appendChild(ul);
     return sec;
+  }
+
+  // ===== N10b — card "Entenda a decisão" (formato editorial do STJ) =====
+  var ICONE_ENTENDA = {
+    doc:   "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z",
+    luz:   "M9 21h6v-1.5H9zm3-19a7 7 0 0 0-3.9 12.8c.5.4.9 1 .9 1.7v.5h6v-.5c0-.7.4-1.3.9-1.7A7 7 0 0 0 12 2z",
+    olho:  "M12 5C5.6 5 2 12 2 12s3.6 7 10 7 10-7 10-7-3.6-7-10-7zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+    lista: "M3 5h2v2H3zm4 0h14v2H7zM3 11h2v2H3zm4 0h14v2H7zM3 17h2v2H3zm4 0h14v2H7z",
+    prazo: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.2 13.2-5.2-2.6V7h2v4.4l4.1 2z",
+    alerta:"M12 2 1 21h22zm1 14h-2v2h2zm0-7h-2v5h2z",
+    pin:   "M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0zm-9 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"
+  };
+  function iconeEntenda(d) {
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+    var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", d); p.setAttribute("fill", "currentColor");
+    svg.appendChild(p);
+    return svg;
+  }
+  function blocoEntenda(rotulo, iconD, classeExtra) {
+    var b = el("div", "entendaBloco" + (classeExtra ? " " + classeExtra : ""));
+    var rot = el("div", "entendaRot");
+    if (iconD) rot.appendChild(iconeEntenda(iconD));
+    rot.appendChild(el("span", null, rotulo));
+    b.appendChild(rot);
+    return b;
+  }
+  function colunaPassos(rotulo, itens) {
+    var col = el("div", null);
+    col.appendChild(el("div", "colRot", rotulo));
+    var ul = el("ul", null);
+    itens.forEach(function (p) { ul.appendChild(el("li", null, p)); });
+    col.appendChild(ul);
+    return col;
+  }
+  // Mini-timeline "onde estamos": 3 marcos DETERMINÍSTICOS montados pelo app
+  // (último ato → agora → próximo passo/prazo) — nada aqui vem de IA.
+  function blocoTimelineEntenda(onde) {
+    var b = blocoEntenda("Onde estamos", ICONE_ENTENDA.pin);
+    function marco(rot, texto, agora) {
+      var m = el("div", "tlMarco" + (agora ? " agora" : ""));
+      m.appendChild(el("span", "tlRot", rot));
+      m.appendChild(document.createTextNode(texto));
+      return m;
+    }
+    if (onde.ultimo) {
+      var t = onde.ultimo.titulo || "";
+      if (onde.ultimo.data) t = dataExtenso(onde.ultimo.data) + " — " + t;
+      b.appendChild(marco("Último ato", t, false));
+    }
+    b.appendChild(marco("Agora", situacaoAmigavel(onde.agora || "Em acompanhamento pelo escritório"), true));
+    if (onde.proximo) {
+      b.appendChild(marco("Próximo passo", dataExtenso(onde.proximo.data) + " — " + onde.proximo.titulo, false));
+    } else {
+      b.appendChild(marco("Próximo passo",
+        "Aguardando o andamento do tribunal — sem compromisso marcado no momento.", false));
+    }
+    return b;
+  }
+  function cardEntenda(e, teorCompleto, ondeEstamos) {
+    var card = el("div", "entenda");
+    // Pergunta-título na voz do cliente + resposta direta em destaque.
+    if (e.pergunta || e.resposta) {
+      var topo = el("div", "entendaPergunta");
+      if (e.pergunta) topo.appendChild(el("div", "p", e.pergunta));
+      if (e.resposta) topo.appendChild(el("div", "r", e.resposta));
+      card.appendChild(topo);
+    }
+    function blocoTexto(rot, icone, texto, classeExtra) {
+      if (!texto) return;
+      var b = blocoEntenda(rot, icone, classeExtra);
+      b.appendChild(el("p", "entendaTxt", texto));
+      card.appendChild(b);
+    }
+    blocoTexto("O que aconteceu?", ICONE_ENTENDA.doc, e.aconteceu);
+    blocoTexto("O que isso significa?", ICONE_ENTENDA.luz, e.significa);
+    blocoTexto("O que muda para você?", ICONE_ENTENDA.olho, e.mudaParaVoce);
+    var pa = e.passosEscritorio || [], pc = e.passosCliente || [];
+    if (pa.length || pc.length) {
+      var bp = blocoEntenda("Próximos passos", ICONE_ENTENDA.lista);
+      var grid = el("div", "entendaPassos");
+      if (pa.length) grid.appendChild(colunaPassos("O escritório vai:", pa));
+      grid.appendChild(colunaPassos("Você precisa:", pc.length ? pc
+        : ["Nada por enquanto — nós cuidamos de tudo e avisamos se algo mudar."]));
+      bp.appendChild(grid);
+      card.appendChild(bp);
+    }
+    // Prazo: calculado pelo sistema do escritório (motor determinístico) —
+    // nunca pela IA. Só aparece quando o app o injetou.
+    blocoTexto("Prazo", ICONE_ENTENDA.prazo, e.prazo, "entendaPrazo");
+    blocoTexto("Importante", ICONE_ENTENDA.alerta, e.importante, "entendaImportante");
+    if (ondeEstamos) card.appendChild(blocoTimelineEntenda(ondeEstamos));
+    // Texto original — COLAPSADO por padrão (separação de vozes do STJ:
+    // editorial simples x oficial literal, sempre conferível).
+    var trecho = e.trechoBase || "";
+    var teor = String(teorCompleto || "");
+    if (trecho || teor) {
+      var bt = el("div", "entendaBloco");
+      var btn = el("button", "btnTeor", "Ver o texto original");
+      btn.type = "button";
+      var caixa = el("div", null);
+      caixa.style.display = "none";
+      if (trecho) caixa.appendChild(el("blockquote", "entendaTrecho", "“" + trecho + "”"));
+      if (teor && teor !== trecho) caixa.appendChild(blocoTeor(teor));
+      var aberto = false;
+      btn.addEventListener("click", function () {
+        aberto = !aberto;
+        caixa.style.display = aberto ? "" : "none";
+        btn.textContent = aberto ? "Ocultar o texto original" : "Ver o texto original";
+      });
+      bt.appendChild(btn);
+      bt.appendChild(caixa);
+      card.appendChild(bt);
+    }
+    // Rodapé de responsabilidade — injetado pelo app na publicação.
+    var quem = e.revisadoPor || "o escritório";
+    var quando = e.revisadoEm ? " em " + dataExtenso(e.revisadoEm) : "";
+    card.appendChild(el("div", "entendaRodape",
+      "Explicação revisada por " + quem + quando +
+      " — não substitui a leitura dos autos. Dúvidas? Fale com seu advogado."));
+    return card;
   }
 
   // Explicação da IA (gerada pelo escritório ao publicar): caixa com selo
@@ -743,7 +923,8 @@
         { nota: "Se a sua presença for necessária, combinaremos todos os detalhes com você com antecedência." }),
       secaoLista("Próximos passos", p.prazos,
         { nota: "Compromissos sob responsabilidade do escritório — você não precisa fazer nada." }),
-      secaoLista("Últimas movimentações", p.eventos, { explicar: true })
+      secaoLista("Últimas movimentações", p.eventos,
+        { explicar: true, ondeEstamos: p.ondeEstamos })
     ].forEach(function (sec) { if (sec) card.appendChild(sec); });
     if (!p.eventos || !p.eventos.length) {
       card.appendChild(el("p", "semMov",
@@ -786,7 +967,11 @@
     var area = el("div", "checklistArea");
     var input = document.createElement("input");
     input.type = "file";
-    input.setAttribute("aria-label", "Enviar arquivo: " + item.rotulo);
+    // O caso entra no rótulo acessível porque o MESMO documento pode ser
+    // pedido em dois casos ("Procuração" em ambos): sem isso, um leitor de
+    // tela anunciaria dois campos idênticos.
+    input.setAttribute("aria-label", "Enviar arquivo: " + item.rotulo +
+      (item.caso ? " — " + humanizarNome(item.caso) : ""));
     area.appendChild(input);
     var status = el("span", "checklistStatus");
     area.appendChild(status);
@@ -837,19 +1022,44 @@
     });
   }
 
+  // Agrupa os pedidos pelo caso a que pertencem, preservando a ordem que veio
+  // do servidor. `item.caso` é o nome amigável do processo (a mesma coisa que
+  // aparece no cartão dele); ausente/vazio = documento do cadastro, que não
+  // pertence a caso nenhum. Versões antigas do servidor não mandam `caso` —
+  // nesse caso tudo cai num grupo só e a página fica igual a antes.
+  function agruparChecklist(itens) {
+    var ordem = [], grupos = {};
+    itens.forEach(function (item) {
+      var caso = (item.caso || "").trim();
+      if (!grupos[caso]) { grupos[caso] = []; ordem.push(caso); }
+      grupos[caso].push(item);
+    });
+    return ordem.map(function (caso) { return { caso: caso, itens: grupos[caso] }; });
+  }
+
   function cartaoChecklist(itens) {
     var card = el("div", "card checklist");
     card.appendChild(el("div", "microTitulo", "Documentos solicitados"));
     card.appendChild(el("p", "checklistNota",
       "O escritório pediu os documentos abaixo. Envie cada um diretamente por aqui, com segurança."));
-    var ul = el("ul", "checklistItens");
-    itens.forEach(function (item) {
-      var li = document.createElement("li");
-      li.className = "checklistItem";
-      atualizarItemChecklist(li, item);
-      ul.appendChild(li);
+    var grupos = agruparChecklist(itens);
+    // Só rotula os grupos quando há mais de um: com um grupo só, o título
+    // seria ruído (o cliente já sabe de onde veio o pedido).
+    var rotular = grupos.length > 1;
+    grupos.forEach(function (g) {
+      if (rotular) {
+        card.appendChild(el("div", "checklistCaso",
+          g.caso ? "Para o caso: " + humanizarNome(g.caso) : "Para o seu cadastro"));
+      }
+      var ul = el("ul", "checklistItens");
+      g.itens.forEach(function (item) {
+        var li = document.createElement("li");
+        li.className = "checklistItem";
+        atualizarItemChecklist(li, item);
+        ul.appendChild(li);
+      });
+      card.appendChild(ul);
     });
-    card.appendChild(ul);
     return card;
   }
 
