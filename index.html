@@ -223,6 +223,31 @@
   .checklistStatus.enviando { color: var(--marinho); }
   .checklistStatus.erro { color: var(--err); font-weight: 600; }
 
+  /* ===== Arquivos do escritório (download pelo cliente) — N51, 28/07/2026 ===== */
+  .entregaItem { padding: 16px 22px; border-top: 1px dashed var(--linha);
+                 display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .entregaItem:first-of-type { border-top: none; }
+  .entregaInfo { flex: 1 1 220px; min-width: 0; }
+  .entregaRot { font-size: .98rem; font-weight: 600; color: var(--tinta); }
+  /* `break-word` antes de `anywhere`: em Safari 15.0–15.3 (iPhone que não
+     atualizou) `anywhere` é ignorado, e um nome de arquivo sem espaço nem hífen
+     — o padrão do que sai do PJe — vazava do cartão e criava rolagem horizontal
+     na página inteira, escondendo o botão Baixar. */
+  .entregaMeta { font-size: .8rem; color: var(--muted); margin-top: 3px;
+                 word-break: break-word; overflow-wrap: anywhere; }
+  .entregaPrazo { font-size: .8rem; color: var(--muted); margin-top: 3px; }
+  /* min-height 44px = alvo de toque confortável no celular (o cliente lê esta
+     página quase sempre no telefone). Com o padding sozinho o botão ficava em
+     37px, e errar o toque num botão de download é frustração garantida. */
+  .btnBaixar { font-family: var(--sans); font-size: .88rem; font-weight: 600;
+               padding: 11px 18px; min-height: 44px; border-radius: 9px;
+               border: 1px solid var(--marinho); background: var(--marinho);
+               color: #fff; cursor: pointer; flex: none; }
+  .btnBaixar:disabled { opacity: .55; cursor: default; }
+  .entregaStatus { font-size: .84rem; line-height: 1.4; flex-basis: 100%; }
+  .entregaStatus:empty { display: none; }
+  .entregaStatus.erro { color: var(--err); font-weight: 600; }
+
   /* Botão flutuante do WhatsApp */
   .zap { position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px;
          border-radius: 50%; background: #25D366; color: #fff; display: flex;
@@ -332,6 +357,7 @@
     </div>
     <div id="destaque"></div>
     <div id="checklist"></div>
+    <div id="entregas"></div>
     <div id="processos"></div>
   </div>
 
@@ -556,8 +582,12 @@
       return "O CPF informado não confere com o cadastro deste portal. Confira os números e tente novamente — em caso de dúvida, fale com o escritório.";
     if (/link invalido/i.test(m))
       return "Este link não é válido. Confira se o endereço foi copiado por completo ou peça um novo link ao escritório.";
-    if (/limite de acessos/i.test(m))
-      return "Este portal atingiu o limite de acessos. Entre em contato com o escritório para receber um novo link.";
+    // "muitas tentativas" é a mensagem NOVA (28/07/2026), que substituiu o teto
+    // cumulativo de 5000 acessos por uma janela de 24 h de tentativas erradas.
+    // O texto antigo continua reconhecido: um servidor ainda não migrado segue
+    // devolvendo "limite de acessos".
+    if (/limite de acessos|muitas tentativas/i.test(m))
+      return "Houve muitas tentativas de acesso com CPF incorreto neste portal. Por segurança, o acesso fica suspenso por algumas horas — tente de novo mais tarde ou fale com o escritório.";
     return "Não foi possível carregar as informações agora. Tente novamente em instantes.";
   }
 
@@ -613,12 +643,22 @@
     btn.textContent = "Verificando…";
     try {
       var resposta = await rpc("portal_obter", { p_token: token, p_cpf: cpf });
+      // Desde 28/07/2026 o servidor RETORNA o erro em vez de lançá-lo quando o
+      // CPF não confere ou o acesso está barrado: lançar abortava a transação e
+      // desfazia o registro da tentativa, deixando o freio contra chute de CPF
+      // sem nada para contar. Servidor antigo continua lançando — o `catch`
+      // abaixo cobre esse caso, e as duas versões convivem.
       if (resposta && resposta.erro === "indisponivel") {
         erroGate("Este portal não está mais disponível. Se precisar acompanhar seus processos, entre em contato com o escritório.");
+      } else if (resposta && resposta.erro === "cpf") {
+        erroGate(mensagemAmigavel("cpf nao confere"));
+      } else if (resposta && resposta.erro === "bloqueado") {
+        erroGate(mensagemAmigavel("muitas tentativas"));
       } else {
         cpfAtual = cpf;
         renderizarPainel(resposta);
         carregarChecklist();
+        carregarEntregas();
       }
     } catch (err) {
       erroGate(mensagemAmigavel(err.message));
@@ -1077,6 +1117,166 @@
     }
     if (!itens || !itens.length) return;
     slot.appendChild(cartaoChecklist(itens));
+  }
+
+  // ===== Arquivos que o escritório deixou para o cliente (N51) =====
+  //
+  // Sentido inverso do checklist: aqui o cliente BAIXA. O servidor só lista o
+  // que ainda está disponível — o arquivo sai de lá sozinho no prazo definido
+  // pelo advogado, então "expirado" nunca chega a aparecer nesta tela.
+
+  function nomeSeguroParaDownload(nome) {
+    // O nome vem do servidor e acaba num atributo `download`: barra vira
+    // caminho, quebra de linha vira cabeçalho estranho, e nome gigante trava
+    // alguns navegadores. Nada de innerHTML em lugar nenhum desta página.
+    var limpo = String(nome || "documento")
+      .replace(/[\\/:*?"<>|\r\n\t]/g, "-")
+      .replace(/^\.+/, "")
+      .trim();
+    if (!limpo) return "documento";
+    if (limpo.length <= 120) return limpo;
+    // Cortar no braço perdia a EXTENSÃO — e é comum: o PJe gera nomes como
+    // "1234567 - 0801234-56.2025... - Documento assinado por FULANO.pdf", com
+    // mais de 130 caracteres. Sem ".pdf" o celular não sabe abrir e o cliente
+    // conclui que o escritório mandou arquivo corrompido. Preserva-se a extensão
+    // e encurta-se só o miolo.
+    var ponto = limpo.lastIndexOf(".");
+    var ext = (ponto > 0 && limpo.length - ponto <= 9 && !/\s/.test(limpo.slice(ponto)))
+      ? limpo.slice(ponto) : "";
+    return limpo.slice(0, 120 - ext.length) + ext;
+  }
+
+  function base64ParaBlob(base64, tipo) {
+    // Decodifica em BLOCOS. Fazer de uma vez mantinha ~5 cópias de 25 MB vivas
+    // ao mesmo tempo (string base64 + string binária do atob + Uint8Array +
+    // Blob) e congelava o main thread num laço de 25 milhões de iterações —
+    // num iPhone antigo a aba recarregava e o cliente voltava para a tela de
+    // CPF sem o arquivo. Por blocos, o pico cai para perto de 2×.
+    var limpa = String(base64).replace(/\s/g, "");  // Postgres quebra a cada 76 (RFC 2045)
+    var partes = [];
+    var BLOCO = 32764;                  // múltiplo de 4: não parte um quarteto base64
+    for (var i = 0; i < limpa.length; i += BLOCO) {
+      var bruto = atob(limpa.slice(i, i + BLOCO));
+      var bytes = new Uint8Array(bruto.length);
+      for (var j = 0; j < bruto.length; j++) bytes[j] = bruto.charCodeAt(j);
+      partes.push(bytes);
+    }
+    return new Blob(partes, { type: tipo || "application/octet-stream" });
+  }
+
+  function tamanhoTexto(bytes) {
+    // "0.0 MB" num despacho de 38 KB lê como arquivo vazio para o leigo — e o
+    // app mostra "38 KB" para a mesma coisa, o que fazia advogado e cliente
+    // verem números diferentes do mesmo documento.
+    if (!bytes) return "";
+    return bytes < 1024 * 1024
+      ? Math.max(1, Math.round(bytes / 1024)) + " KB"
+      : (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  // Erros do fluxo de DOWNLOAD. Existe separado de mensagemAmigavelDocumento
+  // porque aquele fala no vocabulário do upload: um cliente barrado ao BAIXAR
+  // lia "Não foi possível enviar agora. Verifique sua conexão" e ficava trocando
+  // de Wi-Fi para 4G por causa de um bloqueio temporário que ninguém explicou.
+  function mensagemAmigavelEntrega(m) {
+    if (/indisponivel/i.test(m))
+      return "Este arquivo não está mais disponível — o prazo para baixar terminou. Peça ao escritório que envie de novo.";
+    if (/muitas tentativas|limite de acessos/i.test(m))
+      return "Houve muitas tentativas de acesso com CPF incorreto neste portal. Por segurança, o acesso fica suspenso por algumas horas — tente de novo mais tarde ou fale com o escritório.";
+    if (/link invalido|cpf nao confere/i.test(m))
+      return "Sua sessão expirou. Atualize a página e informe o CPF novamente para baixar.";
+    return "Não foi possível baixar agora. Verifique sua conexão e tente novamente.";
+  }
+
+  function prazoTexto(iso) {
+    var falta = new Date(iso).getTime() - Date.now();
+    if (!isFinite(falta) || falta <= 0) return "";
+    var dias = Math.ceil(falta / 86400000);
+    return dias <= 1 ? "Disponível até hoje" : "Disponível por mais " + dias + " dias";
+  }
+
+  function itemEntrega(entrega) {
+    var li = el("li", "entregaItem");
+    var info = el("div", "entregaInfo");
+    info.appendChild(el("div", "entregaRot", entrega.rotulo));
+    var partes = [entrega.nome_arquivo];
+    var tam = tamanhoTexto(entrega.tamanho_bytes);
+    if (tam) partes.push(tam);
+    if (entrega.caso) partes.push(humanizarNome(entrega.caso));
+    info.appendChild(el("div", "entregaMeta", partes.join(" · ")));
+    var prazo = prazoTexto(entrega.expira_em);
+    if (prazo) info.appendChild(el("div", "entregaPrazo", prazo));
+    li.appendChild(info);
+
+    var status = el("div", "entregaStatus");
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btnBaixar";
+    btn.textContent = entrega.baixado ? "Baixar de novo" : "Baixar";
+    btn.setAttribute("aria-label", "Baixar " + entrega.rotulo);
+    li.appendChild(btn);
+    li.appendChild(status);
+
+    btn.addEventListener("click", async function () {
+      btn.disabled = true;
+      var rotuloAntes = btn.textContent;
+      btn.textContent = "Baixando…";
+      status.className = "entregaStatus";
+      status.textContent = "";
+      var url = null;
+      try {
+        var r = await rpc("portal_entrega_baixar", {
+          p_token: token, p_cpf: cpfAtual, p_entrega_id: entrega.id
+        });
+        var blob = base64ParaBlob(r.conteudo_base64, r.content_type);
+        url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = nomeSeguroParaDownload(r.nome_arquivo);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        btn.textContent = "Baixar de novo";
+      } catch (err) {
+        btn.textContent = rotuloAntes;
+        status.className = "entregaStatus erro";
+        status.textContent = mensagemAmigavelEntrega(err.message);
+      } finally {
+        btn.disabled = false;
+        // Sem isto o Blob fica retido na memória do celular até a aba fechar.
+        // O clique já foi processado quando o `finally` roda; o atraso é folga
+        // para o navegador iniciar a gravação antes de a URL ser invalidada.
+        if (url) setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      }
+    });
+    return li;
+  }
+
+  function cartaoEntregas(itens) {
+    var card = el("div", "card checklist");
+    card.appendChild(el("div", "microTitulo", "Arquivos do escritório"));
+    card.appendChild(el("p", "checklistNota",
+      "Documentos que deixamos para você baixar. Eles ficam disponíveis por tempo limitado — salve no seu aparelho."));
+    var ul = el("ul", "checklistItens");
+    itens.forEach(function (e) { ul.appendChild(itemEntrega(e)); });
+    card.appendChild(ul);
+    return card;
+  }
+
+  // Servidor sem a migração de 28/07/2026 simplesmente não tem esta RPC: o
+  // catch silencioso deixa a página idêntica à de antes, em vez de mostrar um
+  // erro que o cliente não pode resolver. Mesmo padrão de carregarChecklist.
+  async function carregarEntregas() {
+    var slot = $("entregas");
+    while (slot.firstChild) slot.removeChild(slot.firstChild);
+    var itens;
+    try {
+      itens = await rpc("portal_entregas_obter", { p_token: token, p_cpf: cpfAtual });
+    } catch (e) {
+      return;
+    }
+    if (!itens || !itens.length) return;
+    slot.appendChild(cartaoEntregas(itens));
   }
 
   function renderizarPainel(resposta) {
