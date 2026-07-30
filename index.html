@@ -2,14 +2,41 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<!-- SEM `maximum-scale=1`: no Android padrão ele BLOQUEIA o pinch-zoom, e o
+     cliente idoso não conseguia ampliar a letra de um andamento. O iOS ignora a
+     diretiva desde o iOS 10, então tirar não muda nada no iPhone. -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<!-- Barra do navegador (Android/Chrome) na cor da casa, casando com o hero. -->
+<meta name="theme-color" content="#1B2849" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12182B" media="(prefers-color-scheme: dark)">
+<!-- Ícone do atalho "Adicionar à Tela de Início".
+     DELIBERADAMENTE SEM `<link rel="manifest">`: o acesso do cliente inteiro
+     depende do #token no FRAGMENTO da URL. Sem manifest, o atalho salva a URL
+     exata (com o token) e funciona hoje. COM manifest, o navegador passa a abrir
+     o `start_url` (iOS 16.4+, WebAPK do Chrome) e o token some — o ícone abriria
+     "/portal/" sem token e o cliente veria "Link inválido". O manifest destruiria
+     exatamente o caso de uso que o justificaria. Mesma razão para não haver
+     service worker: cache do shell quebra o procedimento de atualização de
+     emergência do README, e cache de dado jurídico fura a revogação instantânea
+     do link e o "Apagar do servidor" do art. 18, VI, da LGPD. -->
+<link rel="apple-touch-icon" href="icon-180.png">
 <title>Portal do Cliente — Eceiza Nunes Advogados Associados</title>
 <style>
   :root {
+    /* `light dark`: sem isto o dark fica PELA METADE no celular — campo de CPF,
+       seletor de arquivo, barra de rolagem e fundo do overscroll continuam
+       brancos, que é a diferença entre "tem tema escuro" e "parece quebrado". */
+    color-scheme: light dark;
     --marinho: #1B2849; --dourado: #C6A15B; --papel: #F7F6F3; --tinta: #22242B;
     --marinho-suave: #2A3A63; --dourado-suave: #F3EBDC; --linha: #E5E1D8;
     --muted: #6E6A61; --card: #FFFFFF; --err: #9A3B32;
+    /* `--marinho` tem DOIS papéis: superfície (hero, rodapé, botão) e cor de
+       TEXTO (títulos, links). No tema escuro os dois se separam — a superfície
+       marinho continua marinho (escurecer não faz sentido: já é escuro, e vira
+       apenas uma camada elevada), mas o texto marinho sobre fundo escuro some.
+       `--titulo` é o papel-texto, idêntico ao marinho no claro. */
+    --titulo: #1B2849;
     --serif: "Iowan Old Style", "Palatino", "Palatino Linotype", Georgia, serif;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif;
   }
@@ -38,7 +65,7 @@
           padding: 26px 22px; margin: 18px 0;
           box-shadow: 0 1px 2px rgba(27,40,73,.05), 0 8px 28px rgba(27,40,73,.06); }
 
-  h1, h2, .tituloCaso { font-family: var(--serif); color: var(--marinho); font-weight: 600;
+  h1, h2, .tituloCaso { font-family: var(--serif); color: var(--titulo); font-weight: 600;
                         letter-spacing: .01em; }
   .muted { color: var(--muted); font-size: .92rem; }
   .oculto { display: none !important; }
@@ -83,7 +110,7 @@
   .numLinha { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   .numero { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .82rem;
             color: var(--muted); letter-spacing: .02em; word-break: break-all; }
-  .btnCopiar { border: 1px solid var(--linha); background: #fff; color: var(--marinho);
+  .btnCopiar { border: 1px solid var(--linha); background: var(--card); color: var(--titulo);
                border-radius: 7px; font-size: .74rem; padding: 4px 10px; cursor: pointer;
                font-family: var(--sans); -webkit-tap-highlight-color: transparent; }
   .btnCopiar:hover { border-color: var(--dourado); }
@@ -98,8 +125,10 @@
   .resumo .full { grid-column: 1 / -1; }
   .campo .rot { font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
                 color: var(--dourado); font-weight: 700; margin-bottom: 3px; }
-  .campo .val { font-size: .98rem; line-height: 1.4; color: var(--ink); }
-  .campo .val.forte { font-family: var(--serif); font-size: 1.05rem; color: var(--marinho); }
+  /* `var(--ink)` não existe (a variável da casa é `--tinta`) — funcionava por
+     acidente de herança e viraria falso positivo em toda auditoria futura. */
+  .campo .val { font-size: .98rem; line-height: 1.4; color: var(--tinta); }
+  .campo .val.forte { font-family: var(--serif); font-size: 1.05rem; color: var(--titulo); }
   @media (max-width: 620px) { .resumo { grid-template-columns: 1fr; gap: 12px; } }
 
   .secao { padding: 18px 22px 6px; }
@@ -125,7 +154,7 @@
   .teorTexto { font-size: .88rem; line-height: 1.55; color: #4A4C55;
                white-space: pre-line; word-break: break-word; }
   .btnTeor { margin-top: 8px; background: none; border: none; padding: 0;
-             color: var(--marinho); font-size: .84rem; font-weight: 600;
+             color: var(--titulo); font-size: .84rem; font-weight: 600;
              text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
              -webkit-tap-highlight-color: transparent; }
   /* "Em palavras simples" — tradução leiga do evento (glossário por regras) */
@@ -157,7 +186,7 @@
   .entendaTxt { font-size: .92rem; line-height: 1.55; }
   .entendaPassos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 620px) { .entendaPassos { grid-template-columns: 1fr; } }
-  .entendaPassos .colRot { font-size: .8rem; font-weight: 700; color: var(--marinho);
+  .entendaPassos .colRot { font-size: .8rem; font-weight: 700; color: var(--titulo);
                            margin-bottom: 2px; }
   .entendaPassos ul { list-style: none; }
   .entendaPassos li { position: relative; padding: 2px 0 2px 16px; font-size: .9rem;
@@ -220,7 +249,7 @@
     color: var(--muted); max-width: 100%; }
   .checklistStatus { font-size: .84rem; line-height: 1.4; }
   .checklistStatus:empty { display: none; }
-  .checklistStatus.enviando { color: var(--marinho); }
+  .checklistStatus.enviando { color: var(--titulo); }
   .checklistStatus.erro { color: var(--err); font-weight: 600; }
 
   /* ===== Arquivos do escritório (download pelo cliente) — N51, 28/07/2026 ===== */
@@ -310,6 +339,62 @@
     .processo .topo, .secao { padding-left: 16px; padding-right: 16px; }
     #gate { padding: 30px 16px; }
     #painel .saudacao h1 { font-size: 1.6rem; }
+  }
+
+  /* ===== Tema escuro (N43) =====
+     AUTOMÁTICO, pelo tema do aparelho — sem alternador manual, de propósito: a
+     página não guarda NADA no dispositivo do cliente (ver o comentário do CPF
+     mais abaixo, "só em memória — nunca em localStorage"). Um alternador sem
+     persistência reseta a cada recarga; com persistência, troca uma decisão de
+     privacidade deliberada por um botão de tema. O cliente já escolheu o tema no
+     celular dele, muitas vezes com agendamento noturno.
+
+     REGRA DE OURO DESTE BLOCO: `--marinho` NÃO é redefinido. Ele é superfície
+     (hero, rodapé, botão primário, destaque, "entenda") e no escuro vira uma
+     camada ELEVADA — luminância 0,022 contra 0,007 do fundo —, com o dourado por
+     cima mantendo o mesmo contraste de hoje. Redefinir o marinho quebraria as
+     14 linhas que já vivem sobre ele E derrubaria a proteção do QR do rodapé
+     (ver `.uni-mapa`). O papel-TEXTO do marinho mora em `--titulo`. */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --papel: #14161C; --card: #1C1F27; --tinta: #E6E3DC;
+      --linha: #333741; --muted: #9C978C;
+      /* Título em dourado claro: é a cor que a papelaria já usa sobre marinho
+         (rodapé e destaque), então o escuro fica coerente com o impresso. */
+      --titulo: #E8CE93;
+      /* Dourado clareado: #C6A15B sobre fundo escuro perde contraste no texto
+         pequeno dos micro-títulos. */
+      --dourado: #D9BC7E; --dourado-suave: #2C2517;
+      --err: #FFB4AB;
+    }
+    /* Sombras navy somem no escuro (viram invisíveis) e os cartões perdem a
+       separação: a borda passa a fazer esse trabalho. */
+    .card, .entenda { box-shadow: 0 1px 2px rgba(0,0,0,.45); }
+    .entenda { background: var(--card); }
+    input[type=tel] { background: #10131A; }
+    .erroBox { background: #3A2422; border-color: #6E3733; }
+    .processo .topo { background: linear-gradient(180deg, #20242E, var(--card)); }
+    .resumo, .entendaRodape { background: #191C24; }
+    .chip { color: #E6C88A; border-color: #5A4A2A; }
+    .teor, .entendaTrecho { background: #191C24; }
+    .teorTexto, .entendaTrecho { color: #B9B5AC; }
+    .significa { color: #CBBE7F; }
+    .explicaIA { background: #232035; border-color: #3B3352; border-left-color: #9B87D0; }
+    .explicaIA-cab svg { color: #A995DC; }
+    .explicaIA-cab span { color: #B3A3E0; }
+    .explicaIA-txt { color: #D6D0E4; }
+    .entendaImportante { background: #2C2413; }
+    .entendaImportante .entendaRot { color: #E3C572; }
+    .tlMarco::before { background: #55525A; }
+    .cuidando { background: #1D2A1D; border-color: #33452F; color: #C3D6BC; }
+    .checklistRecebido { color: #9FCB93; }
+    /* EXCEÇÃO DELIBERADA — os dois QR "Como chegar" são traçados
+       `stroke="#1b2849"` sobre fundo TRANSPARENTE: o que os torna escaneáveis é
+       esta caixa clara. Se ela escurecesse junto, o QR ficaria marinho sobre
+       marinho e a câmera simplesmente não leria — e ninguém reclamaria, porque
+       falha em silêncio. Por isso a caixa fica clara nos dois temas (e por isso
+       `.comochegar`, que usa `var(--marinho)`, precisa que o marinho não mude). */
+    .uni-mapa { background: #FBFAF6; }
   }
 </style>
 </head>
@@ -434,6 +519,136 @@
 <script>
 (function () {
   "use strict";
+
+  /* ===================== MARCA — ponto único de verdade (N43) =====================
+     Antes disto, o nome do escritório, o telefone, o WhatsApp, os dois endereços e
+     as duas cores da casa estavam CRAVADOS em ~15 lugares independentes do HTML.
+     Trocar um número de telefone significava caçar ocorrências, e esquecer uma
+     deixava o portal mostrando dado errado ao cliente.
+
+     PROGRESSIVE ENHANCEMENT, de propósito: o HTML abaixo continua trazendo a marca
+     certa escrita à mão, e este bloco a REESCREVE por cima. Se o script falhar ou
+     for bloqueado, o cliente vê a página correta — nunca uma casca com campos
+     vazios. É o oposto de trocar o HTML por placeholders.
+
+     Por que aqui e não numa tabela do Supabase: a marca é renderizada ANTES do gate
+     de CPF (hero, título e rodapé aparecem sem autenticação nenhuma). Buscá-la no
+     servidor exigiria migração + RPC pública + grant ao anon + um round-trip, e
+     ainda deixaria a tela de entrada sem identidade enquanto carrega. Para um
+     escritório, config no arquivo custa zero e não fecha porta: o `snapshot.marca`
+     (aplicado depois do gate) já sobrescreve o que quiser. */
+  var MARCA = {
+    nome: "Eceiza Nunes Advogados Associados",
+    titulo: "Portal do Cliente — Eceiza Nunes Advogados Associados",
+    cores: { marinho: "#1B2849", dourado: "#C6A15B" },
+    whatsapp: "5598981279164",
+    whatsappRotulo: "(98) 98127-9164",
+    telefone: "+559832274911",
+    telefoneRotulo: "(98) 3227-4911",
+    email: "escritorio@eceizanunes.com.br",
+    site: "eceizanunes.com.br",
+    instagram: "https://www.instagram.com/eceizanunes/",
+    linkedin: "https://www.linkedin.com/company/eceiza-nunes-advogados-associados",
+    unidades: [
+      { rotulo: "Matriz · São Luís – MA",
+        endereco: ["Av. Presidente Juscelino Kubitscheck, nº 18, Quadra 14,",
+                   "Quintas do Calhau · CEP 65.072-005"] },
+      { rotulo: "Filial · Salvador – BA",
+        endereco: ["Av. Luís Viana, nº 13.223, Hangar Business Park,",
+                   "Torre 2, Sala 817 · São Cristóvão · CEP 41.500-300"] }
+    ]
+  };
+  /* ATENÇÃO ao editar: como este objeto SOBRESCREVE o HTML, um dado errado aqui
+     apaga o dado certo que está lá embaixo — e o erro fica invisível na revisão
+     do HTML. Endereço e telefone são o que o cliente usa para chegar e para
+     ligar: confira contra o rodapé antes de publicar. (Aconteceu na própria
+     implementação: a sala da filial saiu errada na primeira escrita.) */
+
+  /* Troca só o texto de um elemento que também contém SVG (os links do rodapé são
+     `<svg>…</svg> texto`): mexer no conteúdo inteiro apagaria o ícone. */
+  function textoFinal(el, txt) {
+    if (!el || !txt) return;
+    for (var i = el.childNodes.length - 1; i >= 0; i--) {
+      var n = el.childNodes[i];
+      if (n.nodeType === 3 && n.nodeValue.trim()) { n.nodeValue = "\n      " + txt; return; }
+    }
+    el.appendChild(document.createTextNode(txt));
+  }
+
+  /* Endereço em várias linhas, montado por nó de TEXTO + <br> de verdade. Nada de
+     escrever HTML a partir de string: o endereço é dado de configuração hoje, mas
+     no dia em que vier do snapshot passa a ser conteúdo remoto, e este caminho
+     não pode ser o que vira injeção. */
+  function linhasEm(el, linhas) {
+    if (!el || !linhas || !linhas.length) return;
+    while (el.firstChild) el.removeChild(el.firstChild);
+    for (var i = 0; i < linhas.length; i++) {
+      if (i) el.appendChild(document.createElement("br"));
+      el.appendChild(document.createTextNode(String(linhas[i])));
+    }
+  }
+
+  function aplicarMarca(m) {
+    try {
+      var raiz = document.documentElement;
+      if (m.cores) {
+        if (m.cores.marinho) raiz.style.setProperty("--marinho", m.cores.marinho);
+        if (m.cores.dourado) raiz.style.setProperty("--dourado", m.cores.dourado);
+      }
+      if (m.titulo) document.title = m.titulo;
+      var hero = document.querySelector(".hero img");
+      if (hero && m.nome) hero.alt = m.nome;
+      /* Logo só por data URI de imagem — um `src` remoto vindo do snapshot viraria
+         chamada a servidor de terceiro a partir da página do cliente. */
+      if (hero && m.logo && /^data:image\//.test(m.logo)) hero.src = m.logo;
+      var firma = document.querySelector(".rodape .firma");
+      if (firma && m.nome) firma.textContent = m.nome;
+
+      if (m.whatsapp && /^\d{10,15}$/.test(m.whatsapp)) {
+        var zap = document.querySelector("a.zap");
+        if (zap) zap.href = "https://wa.me/" + m.whatsapp +
+          "?text=Ol%C3%A1%21%20Vim%20pelo%20Portal%20do%20Cliente.";
+        var zapRod = document.querySelector('.contatos a[href*="wa.me"]');
+        if (zapRod) { zapRod.href = "https://wa.me/" + m.whatsapp;
+                      textoFinal(zapRod, m.whatsappRotulo); }
+      }
+      var tel = document.querySelector('.contatos a[href^="tel:"]');
+      if (tel && m.telefone && /^\+?[\d\s-]{8,20}$/.test(m.telefone)) {
+        tel.href = "tel:" + m.telefone; textoFinal(tel, m.telefoneRotulo);
+      }
+      var mail = document.querySelector('.contatos a[href^="mailto:"]');
+      if (mail && m.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.email)) {
+        mail.href = "mailto:" + m.email; textoFinal(mail, m.email);
+      }
+      /* Os links externos (redes, site) só trocam para https — nunca para
+         `javascript:` nem esquema exótico, que é o que um snapshot adulterado
+         tentaria plantar num `href`. */
+      var https = /^https:\/\/[^\s"'<>]+$/;
+      var insta = document.querySelector('.sociais a[aria-label^="Instagram"]');
+      if (insta && https.test(m.instagram || "")) insta.href = m.instagram;
+      var lkd = document.querySelector('.sociais a[aria-label^="LinkedIn"]');
+      if (lkd && https.test(m.linkedin || "")) lkd.href = m.linkedin;
+      var site = document.querySelector("a.site");
+      if (site && m.site && /^[\w.-]+\.[a-z]{2,}$/i.test(m.site)) {
+        site.href = "https://" + m.site; textoFinal(site, m.site);
+      }
+
+      /* Unidades: só rótulo e endereço. O QR "Como chegar" e o link do Maps ficam
+         como estão no HTML — são assets gerados (base64) que este objeto não sabe
+         produzir, e um QR trocado por engano manda o cliente ao endereço errado. */
+      if (m.unidades && m.unidades.length) {
+        var caixas = document.querySelectorAll(".unidades .unidade");
+        for (var i = 0; i < caixas.length && i < m.unidades.length; i++) {
+          var u = m.unidades[i] || {};
+          var rot = caixas[i].querySelector(".uni-cab span");
+          if (rot && u.rotulo) rot.textContent = u.rotulo;
+          linhasEm(caixas[i].querySelector(".uni-end"), u.endereco);
+        }
+      }
+    } catch (e) { /* marca é cosmética: nunca deve impedir o cliente de ver o caso */ }
+  }
+  aplicarMarca(MARCA);
+
   var SB  = "https://auulenrheehjcrglbtbm.supabase.co";
   var KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1dWxlbnJoZWVoamNyZ2xidGJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1MDU5NDMsImV4cCI6MjA5ODA4MTk0M30.JOKEkQRMqJej1H6n_WfmEU5m54wLoUHspP2-FVyT8Tw";
 
@@ -1296,6 +1511,22 @@
       } else {
         avImg.classList.add("oculto");
       }
+    }
+
+    /* Marca vinda do snapshot (opcional) sobrescreve a embutida — mesmo padrão do
+       avatar acima. Serve para o dia em que o app passar a mandar `snap["marca"]`
+       (nome, contatos), sem precisar republicar a página a cada mudança.
+       O embutido continua sendo o DEFAULT porque o hero e o rodapé são desenhados
+       antes do gate de CPF: marca só pelo snapshot deixaria a tela de entrada sem
+       identidade. Campo ausente = nada muda. */
+    if (resposta.snapshot && resposta.snapshot.marca &&
+        typeof resposta.snapshot.marca === "object") {
+      var mistura = {}, k;
+      for (k in MARCA) if (Object.prototype.hasOwnProperty.call(MARCA, k)) mistura[k] = MARCA[k];
+      for (k in resposta.snapshot.marca)
+        if (Object.prototype.hasOwnProperty.call(resposta.snapshot.marca, k))
+          mistura[k] = resposta.snapshot.marca[k];
+      aplicarMarca(mistura);
     }
 
     var alvo = $("processos");
