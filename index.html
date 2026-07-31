@@ -764,15 +764,44 @@
   }
 
   // ===== Glossário leigo ("Em palavras simples") =====
-  // Traduz o juridiquês do título do evento — primeira regra que casar vence.
+  // Traduz o juridiquês do título do evento — PRIMEIRA REGRA QUE CASAR VENCE, e
+  // é por isso que a ordem importa mais que o texto.
+  //
+  // REORDENADO em 31/07/2026 porque a ordem antiga mandava tradução ERRADA ao
+  // cliente. O título do evento carrega a CLASSE do processo, então
+  // "Publicação no DJEN · TJMA — Cumprimento de Sentença" casava a regra de
+  // /sentença/ (que vinha antes) e o cliente lia "O juiz proferiu a decisão
+  // desta fase" quando o fato era apenas uma publicação. Medido contra a tabela
+  // do CNJ embutida no app: 37 classes processuais sequestravam a regra assim
+  // (todas as variantes de Cumprimento de Sentença, Liquidação de Sentença, as
+  // 7 de Tutela, Suspensão de Liminar e de Sentença…), mais 10 nomes de
+  // movimento em que a genérica vencia a específica e entregava o oposto do
+  // que aconteceu — "Homologação de Acordo em Cumprimento de Sentença" virava
+  // "o juiz proferiu a decisão", escondendo do cliente que houve ACORDO.
+  //
+  // Regra de manutenção: do MAIS ESPECÍFICO para o mais genérico. Ao acrescentar
+  // uma regra, pergunte "existe título que casa esta E uma anterior?" — se sim,
+  // ela precisa vir antes.
   var GLOSSARIO = [
+    // 1) Fatos definitivos e específicos, que nenhuma outra regra pode engolir.
     [/tr[âa]nsito em julgado/i, "A decisão se tornou definitiva — não cabe mais recurso."],
+    [/acordo|concilia[çc]/i, "Houve acordo entre as partes — o escritório explica o que foi combinado e os próximos passos."],
+    // 2) A publicação vem ANTES de sentença/decisão/despacho: o título traz a
+    //    classe do processo, e sem esta precedência a classe decide a tradução.
+    //    Ancorada em `^` para não capturar "Juntada de certidão de publicação".
+    [/^publica[çc][ãa]o|^intima[çc][ãa]o (?:no|pelo) di[áa]rio|di[áa]rio da justi[çc]a|djen/i,
+     "Comunicação oficial do tribunal no Diário de Justiça Eletrônico — em geral um despacho, decisão ou intimação. O escritório acompanha todas as publicações."],
+    // 3) Fases de execução, que carregam "sentença" no nome sem ser sentença.
+    [/cumprimento de senten[çc]a|liquida[çc][ãa]o de senten[çc]a|execu[çc][ãa]o de t[íi]tulo/i,
+     "Esta é a fase de cobrança do que foi decidido — o processo agora trata de receber o valor ou fazer cumprir a obrigação."],
+    [/suspens[ãa]o de liminar|suspens[ãa]o de senten[çc]a/i,
+     "A parte contrária pediu a um tribunal superior que suspenda os efeitos da decisão."],
+    // 4) Agora sim as decisões, da mais forte para a mais fraca.
     [/senten[çc]a/i, "O juiz proferiu a decisão desta fase do processo. O escritório analisa o conteúdo e os próximos passos."],
     [/audi[êe]ncia/i, "Sessão oficial do processo. Se a sua presença for necessária, o escritório combina tudo com você com antecedência."],
     [/despacho/i, "O juiz deu um encaminhamento ao processo — ato de andamento, sem decidir a questão principal."],
     [/liminar|tutela|decis[ãa]o/i, "O juiz decidiu uma questão do processo. O escritório avalia o teor e a necessidade de alguma medida."],
     [/conclus/i, "O processo está com o juiz, aguardando análise ou decisão."],
-    [/publica[çc][ãa]o|diário da justi[çc]a|djen/i, "Comunicação oficial do tribunal no Diário de Justiça Eletrônico — em geral um despacho, decisão ou intimação. O escritório acompanha todas as publicações."],
     [/contesta[çc][ãa]o/i, "A parte contrária apresentou a defesa dela."],
     [/cita[çc][ãa]o|citado/i, "A outra parte foi formalmente chamada para responder ao processo."],
     [/intima[çc][ãa]o|intimado/i, "Comunicação oficial do tribunal a uma das partes do processo."],
@@ -781,11 +810,23 @@
     [/distribui[çc]|distribu[íi]do/i, "O processo foi encaminhado à vara e ao juiz responsáveis."],
     [/apela[çc][ãa]o|agravo|embargos|recurso/i, "Uma das partes pediu a revisão de uma decisão — o processo segue para nova análise."],
     [/per[íi]cia|laudo/i, "O processo envolve a análise técnica de um especialista nomeado."],
-    [/acordo|concilia[çc]|homolog/i, "Movimentação relacionada a acordo entre as partes."],
+    // "homologação" sozinha (sem a palavra acordo) — a regra de acordo já subiu
+    // para o topo; esta cobre o que sobra.
+    [/homolog/i, "O juiz confirmou oficialmente o que foi apresentado, dando validade legal ao ato."],
     [/alvar[áa]|expedi[çc]/i, "O tribunal emitiu um documento — por exemplo, para liberação de valores ou cumprimento de ordem."],
+    [/desarquiv/i, "O processo saiu do arquivo e voltou a tramitar."],
     [/arquiv/i, "O processo foi arquivado nesta fase."],
     [/suspens/i, "O andamento do processo está temporariamente suspenso."],
-    [/penhora|bloqueio|pagamento|dep[óo]sito/i, "Há movimentação sobre valores ou bens no processo."]
+    [/penhora|bloqueio|pagamento|dep[óo]sito/i, "Há movimentação sobre valores ou bens no processo."],
+    // Termos que chegavam CRUS ao cliente, sem tradução nenhuma.
+    [/rec[ée]bimento de recurso|recebido o recurso/i, "O recurso foi aceito para análise pelo tribunal."],
+    [/remessa|redistribu/i, "O processo foi enviado a outro juízo ou tribunal para continuar."],
+    [/certid[ãa]o/i, "O cartório do tribunal registrou oficialmente um fato do processo."],
+    [/mandado/i, "O juiz determinou uma ordem a ser cumprida — por exemplo, por oficial de justiça."],
+    [/emenda|aditamento/i, "Um documento do processo foi corrigido ou complementado."],
+    [/impugna[çc][ãa]o/i, "Uma das partes discordou formalmente de algo apresentado no processo."],
+    [/pericia|prova|testemunh/i, "O processo está na fase de produção de provas."],
+    [/custas|preparo/i, "Movimentação sobre as taxas e despesas do processo."]
   ];
   function explicacao(titulo) {
     var t = String(titulo || "");
@@ -802,6 +843,16 @@
     if (/suspens/i.test(t)) return "Suspenso";
     if (/encerr|baixad|extint/i.test(t)) return "Encerrado";
     if (/^ativo$/i.test(t)) return "Em andamento";
+    // Termos que chegavam CRUS ao cliente (31/07/2026) — a função devolvia o
+    // texto de origem quando não reconhecia, então "Recursal" e "Sentenciado"
+    // apareciam como chip do processo, em juridiquês.
+    if (/recursal|recurso/i.test(t)) return "Em recurso";
+    if (/sentenciad/i.test(t)) return "Sentença proferida";
+    if (/execu[çc]|cumprimento/i.test(t)) return "Em cobrança";
+    if (/acordo/i.test(t)) return "Em acordo";
+    if (/instru[çc]/i.test(t)) return "Em produção de provas";
+    if (/conclus/i.test(t)) return "Com o juiz";
+    if (/aguardando/i.test(t)) return "Aguardando o tribunal";
     return t;
   }
 
