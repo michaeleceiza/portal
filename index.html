@@ -763,6 +763,105 @@
     return null;
   }
 
+  // ===== Tradução por CÓDIGO da tabela do CNJ (TPU) =====
+  //
+  // O glossário abaixo traduz por PALAVRA no título, e isso é frágil por
+  // natureza: o título carrega a CLASSE do processo, então "Publicação —
+  // Cumprimento de Sentença" casava a regra de /sentença/ e o cliente lia "o
+  // juiz proferiu a decisão". Reordenar as regras resolveu os casos conhecidos;
+  // traduzir por CÓDIGO resolve a ambiguidade na raiz, porque o número não
+  // depende de como o tribunal escreveu o título.
+  //
+  // O app manda `evento.tpu = { codigo, linhagem, nivel }` — só NÚMEROS. A
+  // frase mora AQUI, na página, por três razões: corrigir um texto não exige
+  // republicar o portal de cada cliente; a correção vale retroativamente para
+  // todo retrato já publicado; e os códigos são estáveis entre versões da
+  // tabela do CNJ (o que muda são nomes e status), então este bloco não
+  // apodrece quando a tabela é regerada.
+  //
+  // `g: true` = verbete de ÂNCORA (raiz da árvore). Só é usado depois de o
+  // glossário por palavra não ter casado nada — ver `explicacao()`.
+  //
+  // NUNCA exibir ao cliente: o número do código, o nome oficial da TPU
+  // (nome-folha tipo "Frutífera", "Definitivo") nem o glossário do CNJ (é
+  // linguagem de cartório e chega a citar o CPC de 1973).
+  //
+  // Todos os códigos abaixo foram conferidos contra a tabela embarcada
+  // (Resources/tpu.json.gz, versão 79): existem e estão ativos.
+  var TPU_LEIGO = {
+    // --- Desfecho: o que o cliente mais precisa entender ---
+    // 219 Procedência · 385 Com Resolução do Mérito
+    "219": { t: "O juiz decidiu o mérito e acolheu o pedido feito na ação. O escritório explica o que isso significa no seu caso e se ainda cabe recurso." },
+    "220": { t: "O juiz decidiu o mérito e não acolheu o pedido feito na ação. O escritório avalia o cabimento de recurso e conversa com você sobre os próximos passos." },
+    "221": { t: "O juiz acolheu parte do que foi pedido na ação. O escritório explica o que foi concedido e o que não foi." },
+    "466": { t: "O juiz homologou o acordo entre as partes — ele passa a valer como decisão." },
+    "15238": { t: "O juiz homologou o acordo entre as partes — ele passa a valer como decisão." },
+    "12649": { t: "O juiz homologou o pedido apresentado." },
+    "12650": { t: "O juiz não homologou o pedido apresentado. O escritório explica o motivo e o que fazer." },
+    "196": { t: "A fase de cobrança foi encerrada — o que era devido foi cumprido ou resolvido." },
+    "456": { t: "O processo foi encerrado nesta fase. O escritório explica o motivo e se ainda há o que fazer." },
+    "848": { t: "A decisão se tornou definitiva: não cabe mais recurso." },
+    "463": { t: "Houve desistência do pedido nesta parte do processo." },
+    "198": { t: "O tribunal acolheu o pedido de esclarecimento da decisão anterior." },
+    "871": { t: "O tribunal acolheu em parte o pedido de esclarecimento da decisão." },
+    "200": { t: "O tribunal não acolheu o pedido de esclarecimento — a decisão anterior fica como estava." },
+    "12252": { t: "O tribunal manteve a decisão do juiz de primeira instância." },
+    "12253": { t: "O tribunal manteve em parte a decisão de primeira instância." },
+    "12254": { t: "O tribunal desfez a decisão de primeira instância." },
+    "242": { t: "O tribunal analisou parte do recurso e não deu razão a ele." },
+    "972": { t: "O relator decidiu o recurso sozinho, sem levar ao grupo de julgadores." },
+    // --- Decisões e medidas ---
+    "339": { t: "O juiz decidiu um pedido urgente, antes do julgamento final." },
+    "348": { t: "O juiz decidiu um pedido urgente, antes do julgamento final." },
+    "792": { t: "O juiz decidiu um pedido urgente, antes do julgamento final." },
+    "332": { t: "O juiz decidiu um pedido de providência urgente, que vale desde já e pode ser revista até o fim do processo." },
+    "347": { t: "O juiz decidiu um pedido de providência urgente, que vale desde já e pode ser revista até o fim do processo." },
+    "785": { t: "O juiz decidiu um pedido de providência urgente, que vale desde já e pode ser revista até o fim do processo." },
+    "11025": { t: "O andamento do processo foi suspenso temporariamente. O escritório acompanha para retomar assim que possível." },
+    "11382": { t: "Houve determinação sobre bens ou valores no processo. O escritório explica o alcance no seu caso." },
+    "12548": { t: "Foi autorizado o levantamento de valores — o escritório informa os próximos passos para o recebimento." },
+    "108": { t: "Houve decisão sobre prisão no processo." },
+    // --- Atos de cartório e andamento ---
+    "12284": { t: "A outra parte está sendo formalmente chamada para responder ao processo." },
+    "15721": { t: "A outra parte foi formalmente chamada e já tem ciência do processo." },
+    "15726": { t: "O chamado formal da outra parte foi expedido e está a caminho." },
+    "15727": { t: "Não foi possível localizar a outra parte para o chamado formal. O escritório providencia nova tentativa." },
+    "12263": { t: "Comunicação oficial do tribunal a uma das partes." },
+    "15728": { t: "A comunicação oficial foi recebida — a partir dela pode correr prazo." },
+    "15729": { t: "A comunicação oficial foi expedida pelo tribunal." },
+    "92": { t: "O ato foi publicado no Diário de Justiça — é assim que o tribunal comunica oficialmente os advogados." },
+    "67": { t: "Um documento novo foi anexado aos autos." },
+    "85": { t: "Uma petição foi apresentada e juntada ao processo." },
+    "51": { t: "O processo está com o juiz, aguardando análise ou decisão." },
+    "26": { t: "O processo foi encaminhado à vara e ao juiz responsáveis." },
+    "123": { t: "O processo foi enviado a outro setor ou instância para continuar." },
+    "132": { t: "O processo foi recebido pelo setor ou instância de destino." },
+    "861": { t: "O processo foi arquivado nesta fase." },
+    "246": { t: "O processo foi arquivado em definitivo — está encerrado." },
+    "245": { t: "O processo foi arquivado provisoriamente e pode voltar a tramitar." },
+    "893": { t: "O processo saiu do arquivo e voltou a tramitar." },
+    "970": { t: "Foi marcada ou realizada audiência. Se a sua presença for necessária, o escritório combina tudo com antecedência." },
+    "14901": { t: "O processo está na fase de análise técnica por um especialista nomeado pelo juiz." },
+    "11383": { t: "O cartório praticou um ato de rotina, sem decisão do juiz." },
+    "11385": { t: "Começou a fase de cobrança do que foi decidido." },
+    "60": { t: "O tribunal emitiu um documento — por exemplo, ofício, mandado ou alvará." },
+    "106": { t: "Foi expedida uma ordem a ser cumprida por oficial de justiça." },
+    "105": { t: "O oficial de justiça devolveu a ordem ao cartório com o resultado da diligência." },
+    "14732": { t: "Os autos em papel foram convertidos para o formato eletrônico." },
+    // --- ÂNCORAS: pegam o que não tem verbete próprio ---
+    "3":     { t: "O juiz decidiu uma questão do processo. O escritório avalia o teor e a necessidade de alguma providência.", g: true },
+    "11009": { t: "O juiz deu um encaminhamento de rotina ao processo, sem decidir a questão principal.", g: true },
+    "193":   { t: "Houve julgamento nesta fase do processo. O escritório explica o resultado e os próximos passos.", g: true },
+    "385":   { t: "O juiz decidiu o mérito do processo. O escritório explica o que isso significa no seu caso.", g: true },
+    "1":     { t: "O juiz praticou um ato no processo.", g: true },
+    "48":    { t: "O cartório praticou um ato de rotina no processo.", g: true },
+    "14":    { t: "O cartório praticou um ato de rotina no processo.", g: true },
+    "18":    { t: "Houve movimentação na distribuição do processo.", g: true },
+    "15":    { t: "Houve movimentação de cálculo no processo.", g: true },
+    "104":   { t: "Houve diligência de oficial de justiça no processo.", g: true },
+    "12522": { t: "Um auxiliar da Justiça praticou um ato no processo.", g: true }
+  };
+
   // ===== Glossário leigo ("Em palavras simples") =====
   // Traduz o juridiquês do título do evento — PRIMEIRA REGRA QUE CASAR VENCE, e
   // é por isso que a ordem importa mais que o texto.
@@ -828,12 +927,46 @@
     [/pericia|prova|testemunh/i, "O processo está na fase de produção de provas."],
     [/custas|preparo/i, "Movimentação sobre as taxas e despesas do processo."]
   ];
-  function explicacao(titulo) {
-    var t = String(titulo || "");
+  /// Verbete da TPU para um evento. `aceitarGenerico` decide se as ÂNCORAS
+  /// (raízes da árvore, marcadas `g`) valem — elas só entram depois de o
+  /// glossário por palavra falhar, para nunca substituir uma frase específica
+  /// que já funcionava por uma mais vaga.
+  function verbeteTPU(item, aceitarGenerico) {
+    var t = item && item.tpu;
+    if (!t || !t.codigo) return null;
+    if (!aceitarGenerico) {
+      var v = TPU_LEIGO[String(t.codigo)];
+      return (v && !v.g) ? v.t : null;      // só o código EXATO, e não-genérico
+    }
+    var chaves = [t.codigo].concat(t.linhagem || []);
+    for (var i = 0; i < chaves.length; i++) {
+      var w = TPU_LEIGO[String(chaves[i])];
+      if (w) return w.t;                    // o nível mais específico que tiver verbete
+    }
+    return null;
+  }
+
+  /// Ordem de decisão da frase "Em palavras simples":
+  ///   1. código exato da TPU   — sem ambiguidade, é o mais confiável
+  ///   2. glossário por palavra — única tradução possível para publicação do
+  ///      DJEN, andamento importado, audiência e prazo, que NÃO têm código
+  ///   3. âncora da linhagem    — garante que nenhum movimento chegue cru
+  ///   4. nada
+  ///
+  /// A mudança é MONOTÔNICA de propósito: nenhuma frase específica que já
+  /// existia pode ser trocada por uma mais genérica. Por isso a âncora vem
+  /// depois do glossário, e não antes — "Homologação de Acordo" mora sob
+  /// "Despacho" na árvore do CNJ por acidente de taxonomia, e sem essa ordem
+  /// viraria "encaminhamento de rotina", escondendo o acordo do cliente.
+  function explicacao(item) {
+    if (typeof item === "string") item = { titulo: item };   // retrocompatibilidade
+    var exato = verbeteTPU(item, false);
+    if (exato) return exato;
+    var t = String((item && item.titulo) || "");
     for (var i = 0; i < GLOSSARIO.length; i++) {
       if (GLOSSARIO[i][0].test(t)) return GLOSSARIO[i][1];
     }
-    return null;
+    return verbeteTPU(item, true);
   }
 
   // Situação em linguagem do cliente.
@@ -1018,7 +1151,7 @@
           if (item.explicacao) {
             li.appendChild(blocoExplicacaoIA(item.explicacao));
           } else {
-            var exp = explicacao(item.titulo);
+            var exp = explicacao(item);
             if (exp) li.appendChild(el("span", "significa", exp));
           }
         }
