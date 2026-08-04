@@ -138,6 +138,62 @@
                  color: var(--dourado); font-weight: 700; margin-bottom: 10px; }
   .microTitulo::after { content: ""; display: block; width: 34px; height: 2px;
                         background: var(--dourado); margin-top: 5px; opacity: .55; }
+  /* Corte "ver mais" da lista de atos — a defesa contra o paredão quando o
+     processo não tem marco de fase e a lista sai corrida. */
+  .btnMaisAtos { margin: 2px 0 14px 22px; background: none; border: 1px solid var(--linha);
+                 border-radius: 999px; padding: 7px 14px; cursor: pointer;
+                 font-family: inherit; font-size: .84rem; font-weight: 600;
+                 color: var(--titulo); -webkit-tap-highlight-color: transparent;
+                 transition: border-color .15s ease; }
+  .btnMaisAtos:hover { border-color: var(--dourado); }
+  .btnMaisAtos:focus-visible { outline: 2px solid var(--dourado); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .btnMaisAtos { transition: none; } }
+
+  /* C3b — índice de processos. Só aparece quando o cliente tem mais de um:
+     antes todos vinham abertos e empilhados, e chegar ao segundo exigia rolar
+     a página inteira. */
+  .indice { padding: 18px 22px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .itemIndice { display: flex; flex-direction: column; gap: 2px; width: 100%;
+                text-align: left; background: none; border: 1px solid var(--linha);
+                border-radius: 10px; padding: 11px 14px; cursor: pointer;
+                font-family: inherit; color: var(--tinta);
+                -webkit-tap-highlight-color: transparent;
+                transition: border-color .15s ease, background .15s ease; }
+  .itemIndice:hover { border-color: var(--dourado); }
+  .itemIndice.ativo { border-color: var(--dourado); background: var(--dourado-suave); }
+  .itemIndice:focus-visible { outline: 2px solid var(--dourado); outline-offset: 2px; }
+  .itemIndiceNome { font-family: var(--serif); font-size: 1rem; color: var(--titulo);
+                    font-weight: 600; line-height: 1.25; }
+  .itemIndiceMeta { font-size: .8rem; color: var(--muted);
+                    font-variant-numeric: tabular-nums; }
+  @media (prefers-reduced-motion: reduce) { .itemIndice { transition: none; } }
+
+  /* C3 — capítulos de fase. O capítulo do momento vem aberto; os anteriores,
+     recolhidos, para caber a história inteira sem rolagem infinita. */
+  .capitulo + .capitulo { margin-top: 4px; }
+  .capitulo details { border-top: 1px solid var(--linha); }
+  .capitulo:first-child details { border-top: none; }
+  .capituloTitulo { display: flex; align-items: baseline; justify-content: space-between;
+                    gap: 12px; padding: 11px 0 11px 22px; cursor: pointer;
+                    list-style: none; position: relative;
+                    -webkit-tap-highlight-color: transparent; }
+  .capituloTitulo::-webkit-details-marker { display: none; }
+  /* Seta: fecha para a direita, abre para baixo. Fica na guia da linha do tempo,
+     alinhada com os marcadores dos atos. */
+  .capituloTitulo::before { content: ""; position: absolute; left: 3px; top: 1.05em;
+    width: 6px; height: 6px; border-right: 1.5px solid var(--dourado);
+    border-bottom: 1.5px solid var(--dourado); transform: rotate(-45deg);
+    transition: transform .18s ease; }
+  details[open] > .capituloTitulo::before { transform: rotate(45deg); }
+  .capituloNome { font-family: var(--serif); font-size: 1rem; color: var(--titulo);
+                  font-weight: 600; }
+  .capituloContagem { font-size: .78rem; color: var(--muted);
+                      font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .capituloTitulo:focus-visible { outline: 2px solid var(--dourado); outline-offset: 2px;
+                                  border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce) {
+    .capituloTitulo::before { transition: none; }
+  }
   ul.itens { list-style: none; }
   ul.itens li { position: relative; padding: 0 0 14px 22px; }
   ul.itens li::before { content: ""; position: absolute; left: 4px; top: .52em;
@@ -1096,7 +1152,24 @@
     if (!r) return null;
     var campos = [];
     if (r.assunto)      campos.push({ rot: "Assunto", val: r.assunto, full: true, destaque: true });
-    if (r.parteAdversa) campos.push({ rot: "Parte contrária", val: humanizarNome(r.parteAdversa), full: true });
+    // PARTES POR PAPEL. O app passou a mandar três listas separadas porque o
+    // campo antigo misturava adversário com litisconsorte (co-parte do MESMO
+    // lado do cliente) — e o portal publicava o co-réu como "Parte contrária".
+    // Preferimos as chaves novas; `parteAdversa` fica para snapshots antigos,
+    // que só são reescritos quando o advogado republica.
+    var lista = function (v) { return (v || []).map(humanizarNome).join(", "); };
+    if (r.partesContrarias && r.partesContrarias.length) {
+      campos.push({ rot: "Parte contrária", val: lista(r.partesContrarias), full: true });
+    } else if (r.parteAdversa) {
+      campos.push({ rot: "Parte contrária", val: humanizarNome(r.parteAdversa), full: true });
+    }
+    if (r.partesMesmoPolo && r.partesMesmoPolo.length) {
+      campos.push({ rot: "Também no seu lado", val: lista(r.partesMesmoPolo), full: true });
+    }
+    // Sem papel confirmado o portal NÃO afirma adversidade — rótulo neutro.
+    if (r.partesOutras && r.partesOutras.length) {
+      campos.push({ rot: "Outras partes do processo", val: lista(r.partesOutras), full: true });
+    }
     if (r.area)         campos.push({ rot: "Área", val: r.area });
     if (r.classe)       campos.push({ rot: "Tipo de ação", val: r.classe });
     if (r.valor)        campos.push({ rot: "Valor da causa", val: r.valor });
@@ -1127,39 +1200,137 @@
     return "há " + n + (n === 1 ? " ano" : " anos");
   }
 
+  // ===== C3 — capítulos de fase =====
+  //
+  // Os títulos moram AQUI, não no app: a fase que o app publica é um código
+  // (`inicio`, `citacao`, …) e a voz com que ela é dita ao cliente é assunto da
+  // página — mesmo contrato do TPU_LEIGO. Reescrever isto é publicar a página,
+  // sem build nem release do app.
+  var FASE_TITULO = {
+    inicio:      "O começo do processo",
+    citacao:     "Chamando a outra parte",
+    instrucao:   "Provas e audiências",
+    decisao:     "A decisão",
+    recurso:     "No tribunal",
+    cumprimento: "Cobrança do que foi decidido",
+    encerrado:   "Encerrado"
+  };
+
+  // Quebra a lista em capítulos de fases consecutivas. Item sem `fase` (snapshot
+  // publicado por app antigo) entra no capítulo corrente — e se nenhum item
+  // tiver fase, devolve UM capítulo sem título, que é exatamente a lista corrida
+  // de antes. É o que mantém a página compatível com o que já está publicado.
+  function emCapitulos(itens) {
+    var caps = [];
+    var atual = null;
+    itens.forEach(function (item) {
+      var f = item.fase || null;
+      if (!atual || (f && f !== atual.fase)) {
+        atual = { fase: f, itens: [] };
+        caps.push(atual);
+      }
+      atual.itens.push(item);
+    });
+    return caps;
+  }
+
   function secaoLista(titulo, itens, opcoes) {
     opcoes = opcoes || {};
     if (!itens || !itens.length) return null;
     var sec = el("div", "secao");
     sec.appendChild(el("div", "microTitulo", titulo));
     if (opcoes.nota) sec.appendChild(el("p", "notaSecao", opcoes.nota));
-    var ul = el("ul", "itens");
-    var timelineFeita = false; // a mini-timeline aparece só no card mais recente
-    itens.forEach(function (item) {
-      var li = document.createElement("li");
-      var rel = relativo(item.data);
-      li.appendChild(el("span", "itemData", dataExtenso(item.data) + (rel ? " · " + rel : "")));
-      li.appendChild(el("span", "itemTexto", item.titulo || ""));
-      if (opcoes.explicar && item.entenda) {
-        // N10b — card estruturado "Entenda a decisão": substitui a caixa de
-        // texto plano E o teor solto (o texto original vai colapsado no card).
-        var onde = timelineFeita ? null : (opcoes.ondeEstamos || null);
-        if (onde) timelineFeita = true;
-        li.appendChild(cardEntenda(item.entenda, item.detalhe, onde));
-      } else {
-        if (opcoes.explicar) {
-          if (item.explicacao) {
-            li.appendChild(blocoExplicacaoIA(item.explicacao));
-          } else {
-            var exp = explicacao(item);
-            if (exp) li.appendChild(el("span", "significa", exp));
+
+    var estado = { timelineFeita: false }; // a mini-timeline só no card mais recente
+
+    // Quantos atos a lista mostra antes de oferecer "ver o histórico completo".
+    // Defesa universal, e não só para o caso dos capítulos: um processo pode não
+    // ter marco de fase nenhum (só petições, juntadas e publicações — visto num
+    // cumprimento de sentença de 2011), e aí a lista sai corrida. Sem este corte
+    // ela vira um paredão de dezenas de atos, que foi exatamente o que apareceu
+    // ao publicar a linha do tempo inteira em 04/08/2026.
+    var LIMITE_ATOS = 8;
+
+    function montarLista(lista) {
+      var ul = el("ul", "itens");
+      lista.forEach(function (item) {
+        var li = document.createElement("li");
+        var rel = relativo(item.data);
+        li.appendChild(el("span", "itemData", dataExtenso(item.data) + (rel ? " · " + rel : "")));
+        li.appendChild(el("span", "itemTexto", item.titulo || ""));
+        if (opcoes.explicar && item.entenda) {
+          // N10b — card estruturado "Entenda a decisão": substitui a caixa de
+          // texto plano E o teor solto (o texto original vai colapsado no card).
+          var onde = estado.timelineFeita ? null : (opcoes.ondeEstamos || null);
+          if (onde) estado.timelineFeita = true;
+          li.appendChild(cardEntenda(item.entenda, item.detalhe, onde));
+        } else {
+          if (opcoes.explicar) {
+            if (item.explicacao) {
+              li.appendChild(blocoExplicacaoIA(item.explicacao));
+            } else {
+              var exp = explicacao(item);
+              if (exp) li.appendChild(el("span", "significa", exp));
+            }
           }
+          if (item.detalhe) li.appendChild(blocoTeor(item.detalhe));
         }
-        if (item.detalhe) li.appendChild(blocoTeor(item.detalhe));
+        ul.appendChild(li);
+      });
+      return ul;
+    }
+
+    // Envolve a lista num corte "ver mais" quando ela é longa. `sempre` força o
+    // corte mesmo em lista curta (não usado hoje; deixado explícito para não
+    // virar número mágico).
+    function comCorte(lista) {
+      var caixa = el("div", "listaCortada");
+      if (lista.length <= LIMITE_ATOS + 2) {
+        caixa.appendChild(montarLista(lista));
+        return caixa;
       }
-      ul.appendChild(li);
+      var visiveis = lista.slice(0, LIMITE_ATOS);
+      var resto = lista.slice(LIMITE_ATOS);
+      caixa.appendChild(montarLista(visiveis));
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btnMaisAtos";
+      btn.textContent = "Ver os outros " + resto.length + " atos";
+      btn.addEventListener("click", function () {
+        caixa.insertBefore(montarLista(resto), btn);
+        btn.remove();
+      });
+      caixa.appendChild(btn);
+      return caixa;
+    }
+
+    var caps = opcoes.capitulos === false ? [{ fase: null, itens: itens }] : emCapitulos(itens);
+    var temFase = caps.some(function (c) { return !!c.fase; });
+
+    if (!temFase) {
+      sec.appendChild(comCorte(itens));
+      return sec;
+    }
+
+    caps.forEach(function (cap, i) {
+      var bloco = el("div", "capitulo");
+      // O PRIMEIRO capítulo é o de agora (a lista vem do mais recente para o
+      // mais antigo) — fica aberto. Os anteriores vêm recolhidos: é isso que
+      // permite publicar a história inteira sem virar rolagem infinita.
+      var aberto = i === 0;
+      var det = document.createElement("details");
+      if (aberto) det.setAttribute("open", "");
+      var sum = document.createElement("summary");
+      sum.className = "capituloTitulo";
+      sum.appendChild(el("span", "capituloNome",
+                         FASE_TITULO[cap.fase] || "Andamento do processo"));
+      sum.appendChild(el("span", "capituloContagem",
+                         cap.itens.length + (cap.itens.length === 1 ? " ato" : " atos")));
+      det.appendChild(sum);
+      det.appendChild(comCorte(cap.itens));
+      bloco.appendChild(det);
+      sec.appendChild(bloco);
     });
-    sec.appendChild(ul);
     return sec;
   }
 
@@ -1758,8 +1929,48 @@
     if (!lista.length) {
       var vazio = el("div", "card", "Nenhum processo em acompanhamento no momento. Em caso de dúvida, fale com o escritório.");
       alvo.appendChild(vazio);
+    } else if (lista.length === 1) {
+      alvo.appendChild(cartaoProcesso(lista[0]));
     } else {
-      lista.forEach(function (p) { alvo.appendChild(cartaoProcesso(p)); });
+      // C3b (04/08/2026) — cliente com vários processos recebia TODOS abertos,
+      // um embaixo do outro, e tinha de rolar a página inteira para chegar ao
+      // segundo. Com a linha do tempo completa isso ficou impraticável. Agora:
+      // um índice no topo e um processo aberto por vez.
+      var indice = el("div", "card indice");
+      indice.appendChild(el("div", "microTitulo", "Seus processos"));
+      var cartoes = [];
+
+      function abrirProcesso(i) {
+        cartoes.forEach(function (c, j) {
+          c.card.classList.toggle("oculto", j !== i);
+          c.botao.classList.toggle("ativo", j === i);
+          c.botao.setAttribute("aria-selected", j === i ? "true" : "false");
+        });
+      }
+
+      lista.forEach(function (p, i) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "itemIndice";
+        b.setAttribute("role", "tab");
+        b.appendChild(el("span", "itemIndiceNome", humanizarNome(p.titulo) || "Processo"));
+        var meta = [];
+        if (p.numero) meta.push(p.numero);
+        if (p.situacao) meta.push(situacaoAmigavel(p.situacao));
+        if (meta.length) b.appendChild(el("span", "itemIndiceMeta", meta.join(" · ")));
+        b.addEventListener("click", function () {
+          abrirProcesso(i);
+          indice.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        indice.appendChild(b);
+
+        var card = cartaoProcesso(p);
+        cartoes.push({ card: card, botao: b });
+      });
+
+      alvo.appendChild(indice);
+      cartoes.forEach(function (c) { alvo.appendChild(c.card); });
+      abrirProcesso(0);
     }
     mostrar("painel");
     window.scrollTo({ top: 0, behavior: "smooth" });
