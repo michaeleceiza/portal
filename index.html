@@ -166,6 +166,15 @@
                     font-weight: 600; line-height: 1.25; }
   .itemIndiceMeta { font-size: .8rem; color: var(--muted);
                     font-variant-numeric: tabular-nums; }
+  .btnVoltarIndice { display: block; width: calc(100% - 44px); margin: 4px 22px 20px;
+                     background: none; border: 1px solid var(--linha); border-radius: 10px;
+                     padding: 11px 14px; cursor: pointer; font-family: inherit;
+                     font-size: .88rem; font-weight: 600; color: var(--titulo);
+                     -webkit-tap-highlight-color: transparent;
+                     transition: border-color .15s ease; }
+  .btnVoltarIndice:hover { border-color: var(--dourado); }
+  .btnVoltarIndice:focus-visible { outline: 2px solid var(--dourado); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .btnVoltarIndice { transition: none; } }
   @media (prefers-reduced-motion: reduce) { .itemIndice { transition: none; } }
 
   /* C3 — capítulos de fase. O capítulo do momento vem aberto; os anteriores,
@@ -1206,15 +1215,37 @@
   // (`inicio`, `citacao`, …) e a voz com que ela é dita ao cliente é assunto da
   // página — mesmo contrato do TPU_LEIGO. Reescrever isto é publicar a página,
   // sem build nem release do app.
+  // Os rótulos nomeiam PERÍODOS, não atos. "A decisão" saiu na primeira versão e
+  // mentia: no processo real do escritório o capítulo tinha 134 atos, e decisão é
+  // UM ato — o que o capítulo agrupa é o tempo que se seguiu a ela.
   var FASE_TITULO = {
     inicio:      "O começo do processo",
     citacao:     "Chamando a outra parte",
     instrucao:   "Provas e audiências",
-    decisao:     "A decisão",
+    decisao:     "Da decisão em diante",
     recurso:     "No tribunal",
     cumprimento: "Cobrança do que foi decidido",
     encerrado:   "Encerrado"
   };
+
+  // Quando o capítulo aconteceu, em ANO — "em 2011", "de 2012 a 2026".
+  //
+  // A primeira versão mostrava mês e ano dos dois extremos ("fev/2012 –
+  // jun/2026"). O advogado do escritório leu e não entendeu o que a faixa
+  // condensava; se ele não entendeu, o cliente não entenderia. O problema não
+  // era o dado, era pedir que se processassem duas datas e a relação entre
+  // elas para responder a uma pergunta simples: "quando foi isso?".
+  //
+  // Ano basta. Um capítulo é um trecho da vida do processo, não uma agenda —
+  // a data exata de cada ato está a um clique, dentro dele.
+  function periodoDoCapitulo(itens) {
+    var anos = itens.map(function (i) { return String(i.data || "").slice(0, 4); })
+                    .filter(function (a) { return /^\d{4}$/.test(a); })
+                    .sort();
+    if (!anos.length) return null;
+    var ini = anos[0], fim = anos[anos.length - 1];
+    return ini === fim ? "em " + ini : "de " + ini + " a " + fim;
+  }
 
   // Quebra a lista em capítulos de fases consecutivas. Item sem `fase` (snapshot
   // publicado por app antigo) entra no capítulo corrente — e se nenhum item
@@ -1324,8 +1355,10 @@
       sum.className = "capituloTitulo";
       sum.appendChild(el("span", "capituloNome",
                          FASE_TITULO[cap.fase] || "Andamento do processo"));
+      var quando = periodoDoCapitulo(cap.itens);
       sum.appendChild(el("span", "capituloContagem",
-                         cap.itens.length + (cap.itens.length === 1 ? " ato" : " atos")));
+                         (quando ? quando + " · " : "")
+                         + cap.itens.length + (cap.itens.length === 1 ? " ato" : " atos")));
       det.appendChild(sum);
       det.appendChild(comCorte(cap.itens));
       bloco.appendChild(det);
@@ -1940,6 +1973,23 @@
       indice.appendChild(el("div", "microTitulo", "Seus processos"));
       var cartoes = [];
 
+      // O título do processo é "AUTOR(es) × RÉU(s)", e num litisconsórcio ele
+      // vem com cinco nomes por extenso — três linhas no índice, antes mesmo de
+      // o cliente escolher. No índice cabe o resumo; o nome completo continua
+      // no cabeçalho do processo aberto, logo abaixo.
+      function tituloCurto(t) {
+        var nome = humanizarNome(t) || "Processo";
+        var lados = nome.split(" × ");
+        if (lados.length !== 2) return nome;
+        function encurtar(lado) {
+          var partes = lado.split(/,\s*/);
+          if (partes.length < 2) return lado;
+          var extras = partes.length - 1;
+          return partes[0] + " e mais " + extras;
+        }
+        return encurtar(lados[0]) + " × " + encurtar(lados[1]);
+      }
+
       function abrirProcesso(i) {
         cartoes.forEach(function (c, j) {
           c.card.classList.toggle("oculto", j !== i);
@@ -1953,7 +2003,7 @@
         b.type = "button";
         b.className = "itemIndice";
         b.setAttribute("role", "tab");
-        b.appendChild(el("span", "itemIndiceNome", humanizarNome(p.titulo) || "Processo"));
+        b.appendChild(el("span", "itemIndiceNome", tituloCurto(p.titulo)));
         var meta = [];
         if (p.numero) meta.push(p.numero);
         if (p.situacao) meta.push(situacaoAmigavel(p.situacao));
@@ -1965,6 +2015,16 @@
         indice.appendChild(b);
 
         var card = cartaoProcesso(p);
+        // Rodapé de volta: um processo com a linha do tempo inteira é longo, e
+        // sem isto trocar de processo exige rolar tudo de volta até o índice.
+        var volta = document.createElement("button");
+        volta.type = "button";
+        volta.className = "btnVoltarIndice";
+        volta.textContent = "↑ Ver meus outros processos";
+        volta.addEventListener("click", function () {
+          indice.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        card.appendChild(volta);
         cartoes.push({ card: card, botao: b });
       });
 
